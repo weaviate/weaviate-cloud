@@ -22,8 +22,7 @@ at the first tag.
 
 ### Build from source
 
-Requires **Go 1.26.6 or newer** (the floor is set in `go.mod`) and read access to this
-repository.
+Requires **Go 1.26.6 or newer** (the floor is set in `go.mod`).
 
 ```
 git clone https://github.com/weaviate/weaviate-cloud
@@ -78,8 +77,7 @@ using GitHub Actions keyless signing (Sigstore Fulcio + Rekor). To verify:
 
 ```sh
 cosign verify-blob \
-  --signature checksums.txt.sig \
-  --certificate checksums.txt.pem \
+  --bundle checksums.txt.sigstore.json \
   --certificate-identity-regexp "^https://github\.com/weaviate/weaviate-cloud/\.github/workflows/release\.yml@refs/tags/v" \
   --certificate-oidc-issuer "https://token.actions.githubusercontent.com" \
   checksums.txt
@@ -158,20 +156,26 @@ wcloud guide
 `wcloud skill install --all` installs a persistent skill file into every supported harness
 (Claude Code, Codex, Cursor, Gemini CLI, Copilot, opencode), so the agent keeps that context
 across sessions. Pass `--all` or `--harness <name>`; with neither it prompts, which fails
-outside an interactive terminal.
+outside an interactive terminal. Add `--project` to write into project-local paths instead of
+the user-global ones it uses by default.
 
 Once a cluster exists, [`weaviate/agent-skills`](https://github.com/weaviate/agent-skills)
 gives an agent the data-plane skills to query and populate it.
 
 ## Exit codes
 
-| Code | Meaning | Code | Meaning |
-|------|---------|------|---------|
-| 0 | Success | 5 | Permission denied |
-| 1 | Generic error | 6 | Conflict |
-| 2 | Usage or validation failed | 7 | Quota exceeded |
-| 3 | Authentication required | 8 | Rate limited |
-| 4 | Not found | 9 | Service unavailable |
+| Code | Meaning                    | Error code examples                      |
+|------|-----------------------------|-------------------------------------------|
+| 0    | Success                    |                                           |
+| 1    | Generic error               | `internal_error`                          |
+| 2    | Usage or validation failed  | `validation_failed`                       |
+| 3    | Authentication required     | `auth_required`                           |
+| 4    | Not found                   | `cluster_not_found`                       |
+| 5    | Permission denied           | `permission_denied`, `access_restricted`  |
+| 6    | Conflict                    | `cluster_already_exists`                  |
+| 7    | Quota exceeded              | `quota_exceeded`                          |
+| 8    | Rate limited                | `rate_limited`                            |
+| 9    | Service unavailable         | `service_unavailable`                     |
 
 ## Reporting problems
 

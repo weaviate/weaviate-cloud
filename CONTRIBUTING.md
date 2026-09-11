@@ -73,17 +73,19 @@ matrix compiles for Windows and macOS but only runs the test suite on Linux.
 ## Commits and pull requests
 
 Commit messages follow `<type>(<scope>): <short summary>`, lowercase, under 72 characters, no
-trailing period. Types: `feat`, `fix`, `chore`, `refactor`, `docs`, `test`, `ci`. Append `!`
-for a breaking change (`feat!`, `fix!`, `chore!`).
+trailing period. The scope is optional and free-form — a component name (`cluster`, `auth`), an
+optional reference such as a GitHub issue number, or left out entirely when neither applies.
+Types: `feat`, `fix`, `chore`, `refactor`, `docs`, `test`, `ci`. Append `!` for a breaking change
+(`feat!`, `fix!`, `chore!`).
 
 ```
 feat(cluster): add delete cluster command
-fix(auth): bound the login wait instead of hanging forever
+fix(#123): return 409 on duplicate cluster name
+docs: add error-code column to the exit-code table
 ```
 
-Internal maintainers scope commits and branches with an internal issue id
-(`fix(ISSUE-1234): ...`, `fix/ISSUE-1234-short-description`). External contributors use a
-descriptive scope and branch name instead; do not invent an issue id.
+Branches follow the same idea: `fix/short-description`, or `fix/123-short-description` when
+there's a reference worth keeping in the branch name. Don't invent one if there isn't.
 
 One pull request per change, squash-merged into `main`. Never commit directly to `main` and
 never skip pre-commit hooks with `--no-verify`. Fill in the pull request template: what

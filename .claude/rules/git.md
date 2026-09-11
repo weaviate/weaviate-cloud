@@ -3,27 +3,33 @@
 ## Branch Naming
 
 ```
-feat/<issue-id>-short-description
-fix/<issue-id>-short-description
-chore/<issue-id>-short-description
-refactor/<issue-id>-short-description
-docs/<issue-id>-short-description
+feat/short-description
+fix/short-description
+chore/short-description
+refactor/short-description
+docs/short-description
 ```
 
-Example: `feat/ISSUE-1234-add-delete-cluster-endpoint`
+An optional reference — such as a GitHub issue number — may be worked into the description when
+there's one worth keeping: `fix/123-return-409-on-duplicate-name`. Most maintenance, docs, and
+chore branches have no such reference; don't invent one to fit the pattern.
+
+Examples: `feat/add-delete-cluster-endpoint`, `fix/123-return-409-on-duplicate-name`
 
 ## Commit Messages
 
-Format: `<type>(<issue-id>): <short summary>`
+Format: `<type>: <short summary>`, or `<type>(<reference>): <short summary>` when there's a
+reference worth including. The reference is optional and free-form — a GitHub issue number, an
+identifier from whatever tracker you use, or nothing at all.
 
 Types: `feat`, `fix`, `chore`, `refactor`, `docs`, `test`, `ci`
 Breaking changes: `feat!`, `fix!`, `chore!` — adds `BREAKING CHANGE` semantics.
 
 Examples:
 ```
-feat(ISSUE-1234): add delete cluster endpoint
-fix(ISSUE-5678): return 409 on duplicate cluster name
-chore!(ISSUE-999): drop support for legacy status field
+docs: add error-code column to the exit-code table
+fix(#123): return 409 on duplicate cluster name
+chore!: drop support for legacy status field
 ```
 
 Keep summary under 72 chars, lowercase, no trailing period.
