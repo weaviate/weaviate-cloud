@@ -22,8 +22,7 @@ at the first tag.
 
 ### Build from source
 
-Requires **Go 1.26.6 or newer** (the floor is set in `go.mod`) and read access to this
-repository.
+Requires **Go 1.26.6 or newer** (the floor is set in `go.mod`).
 
 ```
 git clone https://github.com/weaviate/weaviate-cloud
