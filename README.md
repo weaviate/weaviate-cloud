@@ -156,7 +156,8 @@ wcloud guide
 `wcloud skill install --all` installs a persistent skill file into every supported harness
 (Claude Code, Codex, Cursor, Gemini CLI, Copilot, opencode), so the agent keeps that context
 across sessions. Pass `--all` or `--harness <name>`; with neither it prompts, which fails
-outside an interactive terminal.
+outside an interactive terminal. Add `--project` to write into project-local paths instead of
+the user-global ones it uses by default.
 
 Once a cluster exists, [`weaviate/agent-skills`](https://github.com/weaviate/agent-skills)
 gives an agent the data-plane skills to query and populate it.
