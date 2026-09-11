@@ -43,6 +43,13 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           HOMEBREW_TAP_TOKEN: ${{ secrets.HOMEBREW_TAP_TOKEN }}
+          # WHY: goreleaser resolves the tag to release by checking this env var
+          # before falling back to "tags pointing at HEAD" (goreleaser source:
+          # internal/pipe/git/git.go getTag). Without it, two tags sharing a commit
+          # (e.g. an rc promoted to final with no intervening commit) leave goreleaser
+          # to pick whichever tag comes back first, which can build and try to upload
+          # the wrong version's artifacts.
+          GORELEASER_CURRENT_TAG: ${{ github.ref_name }}
 
       - name: Stage npm platform packages
         run: scripts/npm-publish.sh "${{ github.ref_name }}" stage
