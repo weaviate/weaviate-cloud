@@ -164,13 +164,18 @@ gives an agent the data-plane skills to query and populate it.
 
 ## Exit codes
 
-| Code | Meaning | Code | Meaning |
-|------|---------|------|---------|
-| 0 | Success | 5 | Permission denied |
-| 1 | Generic error | 6 | Conflict |
-| 2 | Usage or validation failed | 7 | Quota exceeded |
-| 3 | Authentication required | 8 | Rate limited |
-| 4 | Not found | 9 | Service unavailable |
+| Code | Meaning                    | Error code examples                      |
+|------|-----------------------------|-------------------------------------------|
+| 0    | Success                    |                                           |
+| 1    | Generic error               | `internal_error`                          |
+| 2    | Usage or validation failed  | `validation_failed`                       |
+| 3    | Authentication required     | `auth_required`                           |
+| 4    | Not found                   | `cluster_not_found`                       |
+| 5    | Permission denied           | `permission_denied`, `access_restricted`  |
+| 6    | Conflict                    | `cluster_already_exists`                  |
+| 7    | Quota exceeded              | `quota_exceeded`                          |
+| 8    | Rate limited                | `rate_limited`                            |
+| 9    | Service unavailable         | `service_unavailable`                     |
 
 ## Reporting problems
 
