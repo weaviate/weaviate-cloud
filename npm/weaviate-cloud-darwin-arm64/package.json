@@ -1,0 +1,13 @@
+{
+  "name": "weaviate-cloud-darwin-arm64",
+  "version": "0.1.0-dev",
+  "description": "Darwin arm64 binary for weaviate-cloud",
+  "os": ["darwin"],
+  "cpu": ["arm64"],
+  "preferUnplugged": true,
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/weaviate/weaviate-cloud"
+  }
+}

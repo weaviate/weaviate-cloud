@@ -1,0 +1,12 @@
+with-expecter: true
+resolve-type-alias: False
+disable-version-string: True
+issue-845-fix: True
+dir: "{{.InterfaceDir}}/mocks"
+outpkg: "mocks"
+mockname: "Mock{{.InterfaceName}}"
+filename: "{{.InterfaceName}}.go"
+packages:
+  github.com/weaviate/weaviate-cloud/internal/factory:
+    interfaces:
+      APIClient:

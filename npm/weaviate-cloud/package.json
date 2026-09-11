@@ -1,0 +1,26 @@
+{
+  "name": "weaviate-cloud",
+  "version": "0.1.0-dev",
+  "description": "Weaviate Cloud CLI — agent-first provisioning over the Weaviate Cloud API",
+  "keywords": ["weaviate", "cloud", "cli", "wcloud"],
+  "homepage": "https://weaviate.io",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/weaviate/weaviate-cloud"
+  },
+  "bin": {
+    "wcloud": "./shim.js",
+    "weaviate-cloud": "./shim.js"
+  },
+  "optionalDependencies": {
+    "weaviate-cloud-darwin-arm64": "0.1.0-dev",
+    "weaviate-cloud-darwin-x64": "0.1.0-dev",
+    "weaviate-cloud-linux-arm64": "0.1.0-dev",
+    "weaviate-cloud-linux-x64": "0.1.0-dev",
+    "weaviate-cloud-win32-x64": "0.1.0-dev"
+  },
+  "engines": {
+    "node": ">=14"
+  }
+}

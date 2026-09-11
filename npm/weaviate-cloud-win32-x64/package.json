@@ -1,0 +1,13 @@
+{
+  "name": "weaviate-cloud-win32-x64",
+  "version": "0.1.0-dev",
+  "description": "Windows x64 binary for weaviate-cloud (best-effort; untested for v0.1)",
+  "os": ["win32"],
+  "cpu": ["x64"],
+  "preferUnplugged": true,
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/weaviate/weaviate-cloud"
+  }
+}

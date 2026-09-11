@@ -1,0 +1,7 @@
+[tools]
+go = "1.26.6"
+golangci-lint = "2.12.2"
+mockery = "2.53.6"
+goreleaser = "2.16.0"
+syft = "1.46.0"
+node = "24.21.0"

@@ -1,0 +1,100 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - "v*"
+
+permissions:
+  contents: write    # create GitHub Release and upload assets
+  id-token: write    # cosign keyless OIDC token + npm trusted publishing OIDC
+
+jobs:
+  goreleaser:
+    name: GoReleaser
+    runs-on: ubuntu-latest
+    environment: release
+    steps:
+      - name: Checkout
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6
+        with:
+          fetch-depth: 0   # goreleaser needs full tag history to compute changelog and version
+
+      - name: Install mise tools (go, goreleaser, syft, node)
+        uses: jdx/mise-action@c2a87611a18de5b3828c5652fe268e992400cb5c # v4.3.0
+
+      - name: Install cosign
+        uses: sigstore/cosign-installer@6f9f17788090df1f26f669e9d70d6ae9567deba6 # v4.1.2
+
+      - name: Compute goreleaser skip flags
+        id: gr-flags
+        run: |
+          SKIP_FLAGS=""
+          if [ -z "${HOMEBREW_TAP_TOKEN}" ]; then
+            echo "HOMEBREW_TAP_TOKEN not set — homebrew formula push will be skipped" >&2
+            SKIP_FLAGS="--skip=homebrew"
+          fi
+          echo "extra=${SKIP_FLAGS}" >> "$GITHUB_OUTPUT"
+        env:
+          HOMEBREW_TAP_TOKEN: ${{ secrets.HOMEBREW_TAP_TOKEN }}
+
+      - name: Run GoReleaser
+        run: goreleaser release --clean ${{ steps.gr-flags.outputs.extra }}
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          HOMEBREW_TAP_TOKEN: ${{ secrets.HOMEBREW_TAP_TOKEN }}
+
+      - name: Stage npm platform packages
+        run: scripts/npm-publish.sh "${{ github.ref_name }}" stage
+
+      - name: Flip release visibility
+        run: |
+          set -euo pipefail
+          TAG="${{ github.ref_name }}"
+          VERSION="${TAG#v}"
+
+          # npm first: the one irreversible action (a published version can never be
+          # reused) and the only auth path never yet exercised for real (OIDC trusted
+          # publishing), so it runs before anything else goes public. A failure here
+          # leaves nothing revealed anywhere; npm-publish.sh skips a version that's
+          # already published, so retrying this whole step after a later failure never
+          # re-attempts it.
+          scripts/npm-publish.sh "$TAG" reveal
+
+          # GitHub next: the homebrew formula points at this release's assets, which
+          # are not downloadable while the release is a draft, so GitHub must go
+          # public before the formula can be merged. Setting draft=false on an
+          # already-public release is a no-op, so this is safe to retry too.
+          gh release edit "$TAG" --draft=false --repo "${{ github.repository }}"
+
+          case "$VERSION" in
+            *-*)
+              echo "flip: prerelease tag, skipping homebrew merge and npm latest promotion" >&2
+              ;;
+            *)
+              if [ -n "${HOMEBREW_TAP_TOKEN}" ]; then
+                PR_NUMBER=$(GH_TOKEN="$HOMEBREW_TAP_TOKEN" gh pr list --repo weaviate/homebrew-tap --head "weaviate-cloud-${VERSION}" --state open --json number --jq '.[0].number')
+                if [ -z "$PR_NUMBER" ]; then
+                  MERGED_NUMBER=$(GH_TOKEN="$HOMEBREW_TAP_TOKEN" gh pr list --repo weaviate/homebrew-tap --head "weaviate-cloud-${VERSION}" --state merged --json number --jq '.[0].number')
+                  if [ -n "$MERGED_NUMBER" ]; then
+                    echo "flip: homebrew formula pr for weaviate-cloud-${VERSION} already merged, skipping" >&2
+                  else
+                    echo "flip: no open homebrew formula pr found for weaviate-cloud-${VERSION}" >&2
+                    exit 1
+                  fi
+                else
+                  GH_TOKEN="$HOMEBREW_TAP_TOKEN" gh pr merge "$PR_NUMBER" --repo weaviate/homebrew-tap --squash
+                fi
+              else
+                echo "flip: HOMEBREW_TAP_TOKEN not set — homebrew formula was never staged, skipping merge" >&2
+              fi
+              ;;
+          esac
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          HOMEBREW_TAP_TOKEN: ${{ secrets.HOMEBREW_TAP_TOKEN }}
+
+      - name: Report incomplete flip
+        if: failure()
+        run: |
+          echo "::error::release flip for ${{ github.ref_name }} did not finish — re-run this job. The npm publish, github undraft and homebrew merge steps each skip work that already succeeded, so retrying is safe."

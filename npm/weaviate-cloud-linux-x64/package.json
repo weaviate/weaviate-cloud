@@ -1,0 +1,13 @@
+{
+  "name": "weaviate-cloud-linux-x64",
+  "version": "0.1.0-dev",
+  "description": "Linux x64 binary for weaviate-cloud (static; glibc and musl compatible)",
+  "os": ["linux"],
+  "cpu": ["x64"],
+  "preferUnplugged": true,
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/weaviate/weaviate-cloud"
+  }
+}

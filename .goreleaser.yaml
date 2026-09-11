@@ -1,0 +1,91 @@
+version: 2
+
+project_name: weaviate-cloud
+
+builds:
+  - id: wcloud
+    main: ./cmd/wcloud
+    binary: wcloud
+    env:
+      - CGO_ENABLED=0
+    goos:
+      - darwin
+      - linux
+      - windows
+    goarch:
+      - amd64
+      - arm64
+    ignore:
+      - goos: windows
+        goarch: arm64
+    ldflags:
+      - -s -w
+      - -X github.com/weaviate/weaviate-cloud/internal/cli.Version={{.Version}}
+
+archives:
+  - id: default
+    formats:
+      - tar.gz
+    format_overrides:
+      - goos: windows
+        formats:
+          - zip
+    wrap_in_directory: false
+    name_template: "{{ .ProjectName }}_{{ .Version }}_{{ .Os }}_{{ .Arch }}"
+    files:
+      - src: LICENSE
+      - src: README.md
+
+checksum:
+  name_template: "checksums.txt"
+
+snapshot:
+  version_template: "{{ .Version }}-SNAPSHOT-{{ .ShortCommit }}"
+
+sboms:
+  - artifacts: archive
+
+signs:
+  - cmd: cosign
+    signature: "${artifact}.sigstore.json"
+    args:
+      - sign-blob
+      - "--bundle=${signature}"
+      - "${artifact}"
+      - "--yes"
+    artifacts: checksum
+    output: true
+
+release:
+  draft: true
+  replace_existing_draft: true
+  prerelease: auto
+
+# WHY: a formula carries no macOS quarantine attribute, unlike a cask, so no Apple signing is needed.
+# TODO: brews is DEPRECATED at goreleaser 2.16.0 (still valid); migrate when the key is removed.
+brews:
+  - name: weaviate-cloud
+    ids:
+      - default
+    directory: Formula
+    commit_author:
+      name: weaviate-cloud-bot
+      email: dev@weaviate.io
+    homepage: "https://weaviate.io"
+    description: "Weaviate Cloud CLI — agent-first provisioning over the Weaviate Cloud API"
+    license: MIT
+    skip_upload: "auto"
+    repository:
+      owner: weaviate
+      name: homebrew-tap
+      token: "{{ .Env.HOMEBREW_TAP_TOKEN }}"
+      pull_request:
+        enabled: true
+
+changelog:
+  sort: asc
+  filters:
+    exclude:
+      - "^docs:"
+      - "^test:"
+      - "^chore:"

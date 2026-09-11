@@ -1,0 +1,78 @@
+# Environment files
+.env
+.env.local
+
+# Binaries
+/wcloud
+/bin/
+*.exe
+*.exe~
+*.dll
+*.so
+*.dylib
+
+# Release / packaging artifacts (goreleaser output, npm platform packages)
+/dist/
+
+# npm platform binaries (copied from dist/ for local dry-run; never committed)
+npm/weaviate-cloud-*/wcloud
+
+# npm pack tarballs generated during local testing
+npm/**/*.tgz
+
+# Local feedback notes — not for the public repo
+FEEDBACK.md
+
+# Test / coverage artifacts
+*.test
+*.out
+coverage.txt
+
+# Dependencies / vendoring
+vendor/
+
+# IDEs / editors
+.idea/
+.vscode/
+*.swp
+
+# AI / agent-assisted coding tools — local sessions, caches, and credentials.
+# Committed config like .cursorrules, CLAUDE.md, .windsurfrules stays in the repo;
+# this section only ignores the per-user / per-session bits.
+
+# Claude Code
+.claude/settings.local.json
+.claude/local/
+CLAUDE.local.md
+
+# Cursor — MCP config can hold secrets
+.cursor/mcp.json
+
+# Windsurf — local-only settings
+.windsurfrules.local
+.windsurf/
+
+# OpenAI Codex CLI
+.codex/
+
+# Continue.dev — sessions and local config can hold API keys
+.continue/sessions/
+
+# Aider — keep .aider.conf.yml committed, ignore scratch / history / caches
+.aider*
+!.aider.conf.yml
+
+# Cline / Roo Code — local agent state
+.cline/
+.roo/
+.roomodes
+
+# Superpowers skill scratch (Claude Code)
+docs/superpowers/
+
+# Per-editor local history (VS Code Timeline etc.)
+.history/
+
+# OS junk
+.DS_Store
+Thumbs.db
