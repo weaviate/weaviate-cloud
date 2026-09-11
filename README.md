@@ -77,8 +77,7 @@ using GitHub Actions keyless signing (Sigstore Fulcio + Rekor). To verify:
 
 ```sh
 cosign verify-blob \
-  --signature checksums.txt.sig \
-  --certificate checksums.txt.pem \
+  --bundle checksums.txt.sigstore.json \
   --certificate-identity-regexp "^https://github\.com/weaviate/weaviate-cloud/\.github/workflows/release\.yml@refs/tags/v" \
   --certificate-oidc-issuer "https://token.actions.githubusercontent.com" \
   checksums.txt
