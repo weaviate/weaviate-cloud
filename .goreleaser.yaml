@@ -79,6 +79,11 @@ brews:
       owner: weaviate
       name: homebrew-tap
       token: "{{ .Env.HOMEBREW_TAP_TOKEN }}"
+      # WHY: repository.branch has no default (goreleaser source: RepoFromRef copies
+      # it verbatim from config), so an unset branch pushes the formula straight to
+      # the tap's default branch instead of a PR branch. Must stay version-scoped so
+      # each release opens its own pull request rather than reusing one.
+      branch: "weaviate-cloud-{{ .Version }}"
       pull_request:
         enabled: true
 
