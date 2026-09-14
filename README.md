@@ -14,9 +14,7 @@ Source: <https://github.com/weaviate/weaviate-cloud>
 
 **Beta (v0.1).** The JSON envelope (`data` / `error` / `metadata`) and the error codes are the
 stable part and are meant to be depended on. Commands, flags and text output may still change
-between v0.1 releases. There are no tagged releases yet, so building from source is the only
-install route today. GitHub Releases, Homebrew, and a version-carrying `go install` all activate
-at the first tag.
+between v0.1 releases.
 
 ## Install
 
@@ -36,7 +34,7 @@ the in-tree default version, `0.1.0-dev`.
 
 ### From a tagged release
 
-Once a version is tagged, these channels serve pre-built binaries:
+These channels serve pre-built binaries:
 
 ```sh
 # go install — carries the real tagged version, no ldflags needed
