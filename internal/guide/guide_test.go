@@ -26,10 +26,14 @@ func TestGuideLifecycleContent(t *testing.T) {
 		{"async wording", "asynchronous", true},
 		// poll command
 		{"poll command", "wcloud cluster status", false},
-		// all seven status values
+		// all eleven status values defined in internal/api/types.go
+		{"status PENDING", "PENDING", false},
 		{"status CREATING", "CREATING", false},
 		{"status READY", "READY", false},
+		{"status UPDATING", "UPDATING", false},
 		{"status FAILED", "FAILED", false},
+		{"status WAITING", "WAITING", false},
+		{"status DELETING", "DELETING", false},
 		{"status DELETED", "DELETED", false},
 		{"status EXPIRED", "EXPIRED", false},
 		{"status SUSPENDED", "SUSPENDED", false},
