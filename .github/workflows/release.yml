@@ -90,7 +90,7 @@ jobs:
                     exit 1
                   fi
                 else
-                  GH_TOKEN="$HOMEBREW_TAP_TOKEN" gh pr merge "$PR_NUMBER" --repo weaviate/homebrew-tap --squash
+                  GH_TOKEN="$HOMEBREW_TAP_TOKEN" gh pr merge "$PR_NUMBER" --repo weaviate/homebrew-tap --auto --squash
                 fi
               else
                 echo "flip: HOMEBREW_TAP_TOKEN not set — homebrew formula was never staged, skipping merge" >&2
