@@ -25,6 +25,9 @@ func NewCreateCmd(f *factory.Factory) *cobra.Command {
 		Short: "Create a cluster",
 		Args:  errcode.Args(cobra.NoArgs),
 		RunE: func(cmd *cobra.Command, _ []string) error {
+			if cmd.Flags().Changed("timeout") && !doWait {
+				return errcode.New(errcode.CodeValidationFailed, "--timeout requires --wait")
+			}
 			ctx := cmd.Context()
 			token, err := f.Auth.RequireToken(ctx)
 			if err != nil {

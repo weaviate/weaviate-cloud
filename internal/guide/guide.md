@@ -98,7 +98,9 @@ cannot be completed anywhere else.
 Confirm the cached identity with `wcloud auth whoami -o json`. Missing or expired auth exits 3
 with `auth_required` and no `error.details`; a timed-out login exits 3 with the same code but
 carries `error.details.waited`, which is how you tell a sign-in that ran out of time from one that
-was never attempted.
+was never attempted. `auth login` itself can also exit 3 with no `error.details` if the browser's
+authorization code is rejected (expired, reused, or otherwise invalid) — the remedy is the same
+re-run either way, so it is not worth telling apart from the "missing" case above.
 
 **The cached credential is an OAuth refresh token scoped to control-plane operations only, stored at `0600`.**
 Run `wcloud auth logout` to revoke it server-side.
@@ -392,6 +394,9 @@ apply its own default. Anything else is rejected by the **API**, not by the CLI,
 costs an authenticated round trip before coming back as exit 2 with
 `error.code` = `validation_failed` and the accepted value named in `error.message`. Do not infer a
 menu of other tiers from the flag's existence; there is not one on this surface.
+
+**`--timeout` without `--wait` is rejected by the CLI itself**, before any request is sent: exit 2
+with `error.code` = `validation_failed` and a message naming the missing `--wait`.
 
 ```
 wcloud cluster create --region eu-central-1 --tier free -o json

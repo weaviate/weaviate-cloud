@@ -259,23 +259,27 @@ func TestClusterCreateWaitCancellation(t *testing.T) {
 	}
 }
 
+// WHY: --timeout's own help text says it requires --wait; passing it alone used to be
+// silently accepted and ignored (no CreateCluster mock expectation set here — a call
+// would fail the test) rather than rejected, contradicting that help text.
+//
 //nolint:paralleltest // t.Setenv via cmdtest.NewFactory; incompatible with t.Parallel
 func TestClusterCreateTimeoutWithoutWait(t *testing.T) {
-	f, apiMock, stdout := cmdtest.NewFactory(t, true)
-	apiMock.EXPECT().
-		CreateCluster(mock.Anything, mock.Anything, mock.Anything).
-		Return(&api.Cluster{ID: "cid-5"}, nil)
+	f, _, _ := cmdtest.NewFactory(t, true)
 
-	if err := cmdtest.Run(t, f, "cluster", "create", "--timeout", "5s"); err != nil {
-		t.Fatalf("execute: %v", err)
+	err := cmdtest.Run(t, f, "cluster", "create", "--timeout", "5s")
+	if err == nil {
+		t.Fatal("expected --timeout without --wait to be rejected")
 	}
-	env := cmdtest.DecodeEnvelope(t, stdout)
-	var got api.Cluster
-	if err := json.Unmarshal(env.Data, &got); err != nil {
-		t.Fatalf("decode data: %v", err)
+	var e *errcode.Error
+	if !errors.As(err, &e) || e.Code != errcode.CodeValidationFailed {
+		t.Fatalf("err = %v, want CodeValidationFailed", err)
 	}
-	if got.ID == "" {
-		t.Fatal("expected non-empty id")
+	if exit := errcode.ExitCodeFor(err); exit != errcode.UsageError {
+		t.Fatalf("exit code = %d, want %d (UsageError)", exit, errcode.UsageError)
+	}
+	if !strings.Contains(err.Error(), "--wait") {
+		t.Fatalf("message = %q, want it to name the missing --wait", err.Error())
 	}
 }
 

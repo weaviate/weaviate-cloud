@@ -4,9 +4,12 @@ package auth
 import (
 	"context"
 	"errors"
+	"fmt"
 	"net/http"
+	"net/http/httptest"
 	"net/url"
 	"strings"
+	"sync"
 	"testing"
 	"time"
 
@@ -15,6 +18,26 @@ import (
 	"github.com/weaviate/weaviate-cloud/internal/errcode"
 	"github.com/weaviate/weaviate-cloud/internal/iostreams"
 )
+
+// syncBuffer is a concurrency-safe stand-in for iostreams.Test()'s plain
+// [bytes.Buffer]: the test drives the loopback callback from the main
+// goroutine while runLogin writes its progress from its own.
+type syncBuffer struct {
+	mu  sync.Mutex
+	buf strings.Builder
+}
+
+func (b *syncBuffer) Write(p []byte) (int, error) {
+	b.mu.Lock()
+	defer b.mu.Unlock()
+	return b.buf.Write(p)
+}
+
+func (b *syncBuffer) String() string {
+	b.mu.Lock()
+	defer b.mu.Unlock()
+	return b.buf.String()
+}
 
 func TestBuildAuthorizeURL(t *testing.T) {
 	t.Parallel()
@@ -157,6 +180,121 @@ func TestRunLoginAcceptsThePermittedAuthorizeURL(t *testing.T) {
 	if !strings.Contains(errBuf.String(), "https://auth.weaviate.cloud/oauth2/v1/apps/authorize?") {
 		t.Fatalf("stderr must carry the sign-in URL, got %q", errBuf.String())
 	}
+}
+
+// WHY: a rejected authorization code leaves the caller exactly as unauthenticated as a
+// login that never started, so a genuine rejected-grant 4xx must classify as auth_required
+// (exit 3) rather than fall through to internal_error the way an unclassified error does
+// by default in cmd/wcloud/main.go's writeErrorEnvelope. A 429/5xx from the same endpoint
+// is transient, not a rejected grant — provider.go's RequireToken already draws this exact
+// line on a token refresh (require_test.go's TestRequireTokenRefresh{Transient,RateLimited}
+// Propagates), and the login exchange must draw it the same way, not collapse it.
+//
+//nolint:paralleltest // shares the auth package's 4-port loopback pool with sibling tests; kept sequential to avoid port contention
+func TestRunLoginTokenExchangeFailureClassification(t *testing.T) {
+	cases := []struct {
+		name             string
+		status           int
+		body             string
+		wantAuthRequired bool
+	}{
+		{"rejected grant (400) is auth_required", http.StatusBadRequest, `{"error":"invalid_grant"}`, true},
+		{"rate limited (429) is not auth_required", http.StatusTooManyRequests, `{"error":"rate_limited"}`, false},
+		{"server error (503) is not auth_required", http.StatusServiceUnavailable, `{"error":"server_error"}`, false},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			err := runLoginAgainstTokenResponse(t, tc.status, tc.body)
+			if err == nil {
+				t.Fatal("expected an error from the rejected token exchange")
+			}
+			var ec *errcode.Error
+			isAuthRequired := errors.As(err, &ec) && ec.Code == errcode.CodeAuthRequired
+			if isAuthRequired != tc.wantAuthRequired {
+				t.Fatalf("auth_required = %v, want %v (err = %v)", isAuthRequired, tc.wantAuthRequired, err)
+			}
+			if tc.wantAuthRequired {
+				if got := errcode.ExitCodeFor(err); got != errcode.AuthRequired {
+					t.Fatalf("exit code = %d, want %d", got, errcode.AuthRequired)
+				}
+			}
+			if !strings.Contains(err.Error(), fmt.Sprintf("HTTP %d", tc.status)) {
+				t.Fatalf("message should keep the HTTP status for diagnosis, got %q", err.Error())
+			}
+		})
+	}
+}
+
+// runLoginAgainstTokenResponse drives a full login through a real loopback callback against a
+// fake token endpoint that always answers with status/body, and returns runLogin's error.
+func runLoginAgainstTokenResponse(t *testing.T, status int, body string) error {
+	t.Helper()
+
+	tokenSrv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		http.Error(w, body, status)
+	}))
+	defer tokenSrv.Close()
+
+	errBuf := &syncBuffer{}
+	streams := &iostreams.IOStreams{In: strings.NewReader(""), Out: &strings.Builder{}, Err: errBuf}
+	cfg := config.AuthConfig{BaseURL: tokenSrv.URL, ClientID: "CID"}
+
+	resultCh := make(chan error, 1)
+	go func() {
+		_, err := runLogin(
+			context.Background(), cfg, tokenSrv.Client(), allowlist.NewPermissiveForTesting(),
+			streams, LoginOptions{Timeout: 5 * time.Second, NoLaunchBrowser: true, Now: time.Now},
+		)
+		resultCh <- err
+	}()
+
+	authURL := waitForSignInURL(t, errBuf)
+	u, err := url.Parse(authURL)
+	if err != nil {
+		t.Fatalf("parse authorize URL: %v", err)
+	}
+	state := u.Query().Get("state")
+	redirectURI := u.Query().Get("redirect_uri")
+	if state == "" || redirectURI == "" {
+		t.Fatalf("authorize URL missing state/redirect_uri: %s", authURL)
+	}
+
+	callbackURL := redirectURI + "?state=" + url.QueryEscape(state) + "&code=AUTH_CODE"
+	req, err := http.NewRequestWithContext(context.Background(), http.MethodGet, callbackURL, http.NoBody)
+	if err != nil {
+		t.Fatalf("build callback request: %v", err)
+	}
+	resp, err := http.DefaultClient.Do(req)
+	if err != nil {
+		t.Fatalf("deliver callback: %v", err)
+	}
+	_ = resp.Body.Close()
+
+	select {
+	case loginErr := <-resultCh:
+		return loginErr
+	case <-time.After(5 * time.Second):
+		t.Fatal("runLogin did not return after the callback was delivered")
+		return nil
+	}
+}
+
+func waitForSignInURL(t *testing.T, errBuf *syncBuffer) string {
+	t.Helper()
+	deadline := time.Now().Add(2 * time.Second)
+	for time.Now().Before(deadline) {
+		if s := errBuf.String(); strings.Contains(s, "http") {
+			for line := range strings.SplitSeq(s, "\n") {
+				line = strings.TrimSpace(line)
+				if strings.HasPrefix(line, "http") {
+					return line
+				}
+			}
+		}
+		time.Sleep(5 * time.Millisecond)
+	}
+	t.Fatalf("timed out waiting for the sign-in URL on stderr, got %q", errBuf.String())
+	return ""
 }
 
 func TestAuthorizeAndTokenURLs(t *testing.T) {
