@@ -259,10 +259,6 @@ func TestClusterCreateWaitCancellation(t *testing.T) {
 	}
 }
 
-// WHY: --timeout's own help text says it requires --wait; passing it alone used to be
-// silently accepted and ignored (no CreateCluster mock expectation set here — a call
-// would fail the test) rather than rejected, contradicting that help text.
-//
 //nolint:paralleltest // t.Setenv via cmdtest.NewFactory; incompatible with t.Parallel
 func TestClusterCreateTimeoutWithoutWait(t *testing.T) {
 	f, _, _ := cmdtest.NewFactory(t, true)

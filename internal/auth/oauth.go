@@ -87,15 +87,6 @@ func runLogin(
 	return tr, nil
 }
 
-// exchangeFailure reclassifies a rejected token exchange as auth_required, using the
-// same rejected-grant-vs-transient predicate provider.go's RequireToken already applies
-// to a token refresh (4xx except 429 = rejected grant, re-login; 429/5xx/network are
-// transient — see provider.go:130-136 and its locked tests in require_test.go). A 429 or
-// 5xx from the token endpoint is not "you are not authenticated," it is "the server is
-// rate-limiting or momentarily down," so it is left unclassified (falls through to
-// internal_error) rather than sent down the auth_required remedy that will not fix it.
-// A non-HTTP failure (decode error, oversized body) is left as-is too; those are not
-// answers from the token endpoint.
 func exchangeFailure(err error) error {
 	var te *tokenError
 	if errors.As(err, &te) && te.status >= 400 && te.status < 500 && te.status != http.StatusTooManyRequests {

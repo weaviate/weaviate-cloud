@@ -19,9 +19,6 @@ import (
 	"github.com/weaviate/weaviate-cloud/internal/iostreams"
 )
 
-// syncBuffer is a concurrency-safe stand-in for iostreams.Test()'s plain
-// [bytes.Buffer]: the test drives the loopback callback from the main
-// goroutine while runLogin writes its progress from its own.
 type syncBuffer struct {
 	mu  sync.Mutex
 	buf strings.Builder
@@ -182,15 +179,7 @@ func TestRunLoginAcceptsThePermittedAuthorizeURL(t *testing.T) {
 	}
 }
 
-// WHY: a rejected authorization code leaves the caller exactly as unauthenticated as a
-// login that never started, so a genuine rejected-grant 4xx must classify as auth_required
-// (exit 3) rather than fall through to internal_error the way an unclassified error does
-// by default in cmd/wcloud/main.go's writeErrorEnvelope. A 429/5xx from the same endpoint
-// is transient, not a rejected grant — provider.go's RequireToken already draws this exact
-// line on a token refresh (require_test.go's TestRequireTokenRefresh{Transient,RateLimited}
-// Propagates), and the login exchange must draw it the same way, not collapse it.
-//
-//nolint:paralleltest // shares the auth package's 4-port loopback pool with sibling tests; kept sequential to avoid port contention
+//nolint:paralleltest // shares the loopback port pool with sibling tests
 func TestRunLoginTokenExchangeFailureClassification(t *testing.T) {
 	cases := []struct {
 		name             string
@@ -225,8 +214,6 @@ func TestRunLoginTokenExchangeFailureClassification(t *testing.T) {
 	}
 }
 
-// runLoginAgainstTokenResponse drives a full login through a real loopback callback against a
-// fake token endpoint that always answers with status/body, and returns runLogin's error.
 func runLoginAgainstTokenResponse(t *testing.T, status int, body string) error {
 	t.Helper()
 
