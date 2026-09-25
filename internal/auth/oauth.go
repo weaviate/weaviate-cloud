@@ -80,7 +80,19 @@ func runLogin(
 		}
 		return nil, err
 	}
-	return exchangeCode(ctx, cfg, httpClient, policy, code, loop.redirectURI, pkce.Verifier)
+	tr, err := exchangeCode(ctx, cfg, httpClient, policy, code, loop.redirectURI, pkce.Verifier)
+	if err != nil {
+		return nil, exchangeFailure(err)
+	}
+	return tr, nil
+}
+
+func exchangeFailure(err error) error {
+	var te *tokenError
+	if errors.As(err, &te) && te.status >= 400 && te.status < 500 && te.status != http.StatusTooManyRequests {
+		return &errcode.Error{Code: errcode.CodeAuthRequired, Message: err.Error(), Cause: err}
+	}
+	return err
 }
 
 func buildAuthorizeURL(cfg config.AuthConfig, redirectURI, state, challenge string) string {
