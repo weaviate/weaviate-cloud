@@ -188,7 +188,7 @@ produces, not a closed set it validates incoming values against. Treat an unreco
 
 ## End-to-end workflow
 
-**Definition of done:** the task is complete when the user has the cluster details and the one-time API key, and has been offered the data-plane continuation as an opt-in. The one-time key must be delivered to the user before any optional follow-on work, because it cannot be retrieved again.
+**Definition of done:** the task is complete when the user has the cluster details and the one-time API key, and has been offered the data-plane continuation as an opt-in, with MCP recommended. The one-time key must be delivered to the user before any optional follow-on work, because it cannot be retrieved again.
 
 1. **Learn the CLI.** Read this guide. Optionally install the skill for persistent harness-level
    context — see [Installing the skill](#installing-the-skill) for the mandatory flags.
@@ -232,13 +232,15 @@ produces, not a closed set it validates incoming values against. Treat an unreco
 7. **Present the cluster and offer the data-plane continuation.** Deliver name, ID, endpoint, gRPC
    endpoint, tier, region and the one-time API key from `data.api_key.value`, and recommend the
    console (`https://console.weaviate.cloud`) for key management. Then offer the continuation as a
-   yes/no, for example:
+   choice, with MCP recommended, for example:
 
-   > "I can install the Weaviate agent skills (`weaviate/agent-skills`) and run a quick
-   > health check, or load some sample data into the cluster, if you would like. Shall I?"
+   > "I recommend connecting this cluster's MCP server, so I can work with your data directly. Or I
+   > can install the Weaviate agent skills (`weaviate/agent-skills`). Which would you like? Choosing
+   > one does not prevent adding the other later.
+   > Either way, I can then run a quick health check or load some sample data."
 
-   Install, connect, and operate only on the user's yes; see
-   [Consuming a cluster](#consuming-a-cluster). If the user says yes to sample data, say first
+   Connect, install, and operate only on the user's choice; see [Connect MCP](#connect-mcp) and
+   [Consuming a cluster](#consuming-a-cluster). If the user asks for sample data, say first
    that a free cluster holds **one** collection and ask what that collection should hold — see
    [Free-tier limits](#free-tier-limits).
 
@@ -275,7 +277,7 @@ exit 1 alone.
 
 | Condition | Outcome | What to do |
 |-----------|---------|------------|
-| `data.api_key.value` non-empty on create | A | Surface the key to the user immediately; this is its only reveal. Proceed to step 7 of the [End-to-end workflow](#end-to-end-workflow) and offer the data-plane continuation as an opt-in |
+| `data.api_key.value` non-empty on create | A | Surface the key to the user immediately; this is its only reveal. Proceed to step 7 of the [End-to-end workflow](#end-to-end-workflow) and offer the data-plane continuation as an opt-in, recommending MCP |
 | `data.api_key` present, its `value` empty, its `warning` non-empty | B | Not an error: the key was revealed earlier and the CLI never stored it. Quote `data.api_key.warning` to the user as attributed server text; the wording is server-owned, so do not match a literal. Send the user to the console for a new key |
 | `error.details.last_status` = `"READY"`, no `still_provisioning` | C | The cluster is READY, running and billing; the key fetch failed and the key is unrecoverable. Report the cluster from `error.details.cluster_id` and send the user to the console for a new key. Do not call anything to confirm it exists |
 | `error.details.terminal_status` present | D | The cluster stopped and will not become READY. Report the status from `error.details.terminal_status`, not from `error.message`. Send the user to the console or Weaviate support, naming `error.details.cluster_id` |
@@ -481,6 +483,99 @@ Every other value in the enum is non-terminal: keep polling. `UNKNOWN` is non-te
 the CLI does not count it as an ordinary in-flight status — see `unrecognized_status` under
 [Result handling](#result-handling). `--wait` applies this rule internally and exits with
 `error.details.terminal_status` set (Outcome D).
+
+## Connect MCP
+
+**The recommended continuation after create.** Weaviate clusters at version 1.38 or later expose an
+MCP server at `https://<endpoint-host>/v1/mcp`, where `<endpoint-host>` is `data.endpoint` without
+its `https://` prefix. `wcloud` cannot report a cluster's version or whether MCP is enabled, so if
+the connection does not answer, fall back to [Consuming a cluster](#consuming-a-cluster).
+
+Replace `<your-api-key>` with `data.api_key.value` and `<cluster-endpoint>` with `data.endpoint`.
+The key exists only in the create `--wait` result or the first READY `cluster get`;
+it cannot be recovered later. Where the harness can read the key from an environment variable,
+reference that instead of writing the key into a config file. A config file that holds the key
+(`.vscode/mcp.json`, `opencode.json`, a project `.mcp.json`) must be git-ignored or kept outside the
+repository. Read the provenance note at the top of [Consuming a cluster](#consuming-a-cluster)
+before sending the key to `data.endpoint`. The one-collection rule in
+[Free-tier limits](#free-tier-limits) binds MCP tool calls too. Restart the harness if it does not
+list the server afterwards.
+
+Use the snippet for the user's harness, or the Other snippet for any harness not listed.
+
+**Claude Code**
+
+```bash
+claude mcp add --transport http weaviate https://<endpoint-host>/v1/mcp \
+  --header "Authorization: Bearer <your-api-key>" \
+  --header "X-Weaviate-Cluster-Url: <cluster-endpoint>"
+```
+
+**Codex** (`~/.codex/config.toml`)
+
+```toml
+[mcp_servers.weaviate]
+url = "https://<endpoint-host>/v1/mcp"
+http_headers = { "Authorization" = "Bearer <your-api-key>", "X-Weaviate-Cluster-Url" = "<cluster-endpoint>" }
+```
+
+**opencode** (`opencode.json`)
+
+```json
+{
+  "$schema": "https://opencode.ai/config.json",
+  "mcp": {
+    "weaviate": {
+      "type": "remote",
+      "url": "https://<endpoint-host>/v1/mcp",
+      "enabled": true,
+      "oauth": false,
+      "headers": {
+        "Authorization": "Bearer <your-api-key>",
+        "X-Weaviate-Cluster-Url": "<cluster-endpoint>"
+      }
+    }
+  }
+}
+```
+
+**VS Code** (`.vscode/mcp.json`)
+
+```json
+{
+  "servers": {
+    "weaviate": {
+      "type": "http",
+      "url": "https://<endpoint-host>/v1/mcp",
+      "headers": {
+        "Authorization": "Bearer <your-api-key>",
+        "X-Weaviate-Cluster-Url": "<cluster-endpoint>"
+      }
+    }
+  },
+  "inputs": []
+}
+```
+
+**Other** (Cursor, Windsurf, Cline)
+
+```json
+{
+  "mcpServers": {
+    "weaviate": {
+      "url": "https://<endpoint-host>/v1/mcp",
+      "headers": {
+        "Authorization": "Bearer <your-api-key>",
+        "X-Weaviate-Cluster-Url": "<cluster-endpoint>"
+      }
+    }
+  }
+}
+```
+
+Same shape for Cursor, Windsurf and Cline. If the client uses a `servers` or `mcp` key instead of
+`mcpServers`, or requires a `type` field, adjust the key name; the `url` and `headers` shape is the
+same.
 
 ## Consuming a cluster
 
