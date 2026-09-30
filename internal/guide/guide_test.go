@@ -1,6 +1,7 @@
 package guide_test
 
 import (
+	"encoding/json"
 	"strings"
 	"testing"
 
@@ -93,7 +94,7 @@ func TestGuideLifecycleContent(t *testing.T) {
 		// deliver key before optional follow-on; offer data-plane as opt-in
 		{"deliver key first", "one-time key must be delivered to the user before any optional follow-on work", false},
 		{"offer continuation opt-in", "been offered the data-plane continuation as an opt-in", false},
-		{"offer yes/no", "Shall I", false},
+		{"offer MCP or skills choice", "Which would you like?", false},
 
 		// agent must omit --name so the server auto-generates; never ask, never invent
 		{"name auto-generate instruction", "The cluster name is auto-generated when `--name` is omitted.", false},
@@ -449,5 +450,201 @@ func TestGuideDocumentsRestrictedNetworkAccessPins(t *testing.T) {
 		if strings.Contains(md, phrase) {
 			t.Errorf("guide asserts what the CLI cannot observe: %q", phrase)
 		}
+	}
+}
+
+func mcpSection(t *testing.T, md string) string {
+	t.Helper()
+	_, after, found := strings.Cut(md, "\n## Connect MCP\n")
+	if !found {
+		t.Fatal(`guide has no "## Connect MCP" section`)
+	}
+	body, _, found := strings.Cut(after, "\n## ")
+	if !found {
+		t.Fatal("## Connect MCP is not followed by another ## section")
+	}
+	return body
+}
+
+func stepSeven(t *testing.T, md string) string {
+	t.Helper()
+	_, after, found := strings.Cut(md, "7. **Present the cluster")
+	if !found {
+		t.Fatal("guide has no step 7")
+	}
+	body, _, found := strings.Cut(after, "\n## Result handling")
+	if !found {
+		t.Fatal("step 7 is not followed by ## Result handling")
+	}
+	return body
+}
+
+// TestGuideRecommendsMCPAfterCreate pins the post-create continuation as a choice with MCP
+// recommended and listed first, with agent skills still offered.
+func TestGuideRecommendsMCPAfterCreate(t *testing.T) {
+	t.Parallel()
+	md := guide.Markdown()
+	step := stepSeven(t, md)
+
+	required := []struct {
+		name     string
+		haystack string
+		phrase   string
+	}{
+		{"step 7 recommends MCP", step, "recommend connecting this cluster's MCP server"},
+		{"step 7 links Connect MCP", step, "(#connect-mcp)"},
+		{"step 7 links Consuming a cluster", step, "(#consuming-a-cluster)"},
+		{"step 7 keeps agent skills on offer", step, "Weaviate agent skills (`weaviate/agent-skills`)"},
+		{"step 7 says the paths are not exclusive", step, "does not prevent adding the other later"},
+		{
+			"step 7 keeps the health check and sample data offer",
+			step,
+			"Either way, I can then run a quick health check or load some sample data",
+		},
+		{"definition of done names MCP", md, "as an opt-in, with MCP recommended"},
+		{"outcome A recommends MCP", md, "offer the data-plane continuation as an opt-in, recommending MCP"},
+	}
+	for _, tc := range required {
+		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+			if !strings.Contains(tc.haystack, tc.phrase) {
+				t.Errorf("guide missing required content %q", tc.phrase)
+			}
+		})
+	}
+
+	t.Run("step 7 names MCP before agent skills", func(t *testing.T) {
+		t.Parallel()
+		mcp, skills := strings.Index(step, "MCP"), strings.Index(step, "agent skills")
+		if mcp < 0 || skills < 0 || mcp > skills {
+			t.Errorf("MCP at %d, agent skills at %d in step 7 — MCP must come first", mcp, skills)
+		}
+	})
+
+	t.Run("Connect MCP sits between the workflow and Consuming a cluster", func(t *testing.T) {
+		t.Parallel()
+		workflow := strings.Index(md, "## End-to-end workflow")
+		connect := strings.Index(md, "\n## Connect MCP\n")
+		consuming := strings.Index(md, "\n## Consuming a cluster\n")
+		if workflow < 0 || connect < workflow || consuming < connect {
+			t.Errorf("section order wrong: workflow=%d connect=%d consuming=%d", workflow, connect, consuming)
+		}
+	})
+}
+
+// TestGuideMCPSetupMirrorsConsole pins each client's snippet to the shape of the console's
+// connect tab so the guide and the console teach the same setup.
+func TestGuideMCPSetupMirrorsConsole(t *testing.T) {
+	t.Parallel()
+	body := mcpSection(t, guide.Markdown())
+
+	clients := []struct {
+		name    string
+		phrases []string
+	}{
+		{"claude code", []string{
+			"**Claude Code**",
+			"claude mcp add --transport http weaviate https://<endpoint-host>/v1/mcp \\",
+			`--header "Authorization: Bearer <your-api-key>" \`,
+			`--header "X-Weaviate-Cluster-Url: <cluster-endpoint>"`,
+		}},
+		{
+			"codex",
+			[]string{
+				"**Codex** (`~/.codex/config.toml`)",
+				"[mcp_servers.weaviate]",
+				`url = "https://<endpoint-host>/v1/mcp"`,
+				`http_headers = { "Authorization" = "Bearer <your-api-key>", "X-Weaviate-Cluster-Url" = "<cluster-endpoint>" }`,
+			},
+		},
+		{"opencode", []string{
+			"**opencode** (`opencode.json`)",
+			`"$schema": "https://opencode.ai/config.json"`,
+			`"mcp": {`,
+			`"type": "remote"`,
+			`"enabled": true`,
+			`"oauth": false`,
+		}},
+		{"vs code", []string{
+			"**VS Code** (`.vscode/mcp.json`)",
+			`"servers": {`,
+			`"type": "http"`,
+			`"inputs": []`,
+		}},
+		{"other", []string{
+			"**Other** (Cursor, Windsurf, Cline)",
+			`"mcpServers": {`,
+		}},
+	}
+	for _, c := range clients {
+		t.Run(c.name, func(t *testing.T) {
+			t.Parallel()
+			for _, p := range c.phrases {
+				if !strings.Contains(body, p) {
+					t.Errorf("Connect MCP missing %q", p)
+				}
+			}
+		})
+	}
+
+	counts := []struct {
+		phrase string
+		want   int
+	}{
+		{"https://<endpoint-host>/v1/mcp", 6},
+		{"X-Weaviate-Cluster-Url", 5},
+		{"Bearer <your-api-key>", 5},
+	}
+	for _, c := range counts {
+		if got := strings.Count(body, c.phrase); got != c.want {
+			t.Errorf("Connect MCP has %q %d times, want %d", c.phrase, got, c.want)
+		}
+	}
+}
+
+func TestGuideMCPJSONSnippetsAreValid(t *testing.T) {
+	t.Parallel()
+	rest := mcpSection(t, guide.Markdown())
+	var n int
+	for {
+		_, after, found := strings.Cut(rest, "```json\n")
+		if !found {
+			break
+		}
+		block, next, _ := strings.Cut(after, "```")
+		if !json.Valid([]byte(block)) {
+			t.Errorf("json snippet %d is not valid JSON:\n%s", n+1, block)
+		}
+		n++
+		rest = next
+	}
+	if n != 3 {
+		t.Errorf("Connect MCP has %d json snippets, want 3 (opencode, VS Code, Other)", n)
+	}
+}
+
+// TestGuideMCPRequirementsAndFallback pins what the guide must tell an agent it cannot check
+// itself, and that the console's placeholder spelling does not leak in.
+func TestGuideMCPRequirementsAndFallback(t *testing.T) {
+	t.Parallel()
+	md := guide.Markdown()
+	body := mcpSection(t, md)
+
+	required := []string{
+		"version 1.38 or later",
+		"cannot report a cluster's version or whether MCP is enabled",
+		"fall back to [Consuming a cluster](#consuming-a-cluster)",
+		"cannot be recovered later",
+		"reference that instead of writing the key into a config file",
+		"[Free-tier limits](#free-tier-limits)",
+	}
+	for _, p := range required {
+		if !strings.Contains(body, p) {
+			t.Errorf("Connect MCP missing %q", p)
+		}
+	}
+
+	if strings.Contains(md, "<Your API Key>") {
+		t.Error(`guide uses the console's "<Your API Key>"; the guide's placeholder is <your-api-key>`)
 	}
 }

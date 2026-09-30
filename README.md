@@ -157,8 +157,10 @@ across sessions. Pass `--all` or `--harness <name>`; with neither it prompts, wh
 outside an interactive terminal. Add `--project` to write into project-local paths instead of
 the user-global ones it uses by default.
 
-Once a cluster exists, [`weaviate/agent-skills`](https://github.com/weaviate/agent-skills)
-gives an agent the data-plane skills to query and populate it.
+Once a cluster exists, the guide recommends connecting its MCP server (setup for Claude Code,
+Codex, opencode, VS Code and other clients is in `wcloud guide`), or installing
+[`weaviate/agent-skills`](https://github.com/weaviate/agent-skills) to give an agent the
+data-plane skills to query and populate it.
 
 ## Exit codes
 
