@@ -180,15 +180,21 @@ request ids appear and both are real: `metadata.request_id` (the CLI's) and one 
 produces, not a closed set it validates incoming values against. Treat an unrecognized
 `error.code` as informative.
 
+- **Exit 5 / `permission_denied` on any command probably means the user is a read-only member of
+  the organisation.** Tell them that is the likely cause, and to ask their organisation
+  administrator for a different, higher role. Do not offer to install agent skills (`weaviate/agent-skills`) or connect the MCP
+  server, and do not send them to the console for a new key: a read-only member can do none of it.
+  Decide on `error.code`, never on the message or on exit 5 alone, which `access_restricted` shares.
 - **Exit 7 / `quota_exceeded` on `cluster create` almost always means the account already has a
-  free cluster**, and that cluster may sit in an organisation this CLI cannot see. Read
-  [Free-tier limits](#free-tier-limits) before reporting it, and never retry the create.
+  free cluster**, and that cluster may sit in an organisation this CLI cannot see, or may be
+  suspended. Read [Free-tier limits](#free-tier-limits) before reporting it, and never retry the
+  create.
 - **Exit 8 / `rate_limited` is the failure an agent is most likely to meet**, because a polling
   loop is the natural way to trip it. See [Outcome I](#outcome-i--rate-limited).
 
 ## End-to-end workflow
 
-**Definition of done:** the task is complete when the user has the cluster details and the one-time API key, and has been offered the data-plane continuation as an opt-in, with MCP recommended. The one-time key must be delivered to the user before any optional follow-on work, because it cannot be retrieved again.
+**Definition of done:** the task is complete when the user has the cluster details and the one-time API key, and has been offered the data-plane continuation as an opt-in, with MCP recommended. The one-time key must be delivered to the user before any optional follow-on work, because it cannot be retrieved again. The exception is a read-only member, who gets the explanation under Exit 5 in [Exit codes](#exit-codes) instead.
 
 1. **Learn the CLI.** Read this guide. Optionally install the skill for persistent harness-level
    context — see [Installing the skill](#installing-the-skill) for the mandatory flags.
@@ -439,11 +445,14 @@ You can have only one free cluster at a time; creating a second is rejected with
 
 **That limit is per account and spans every organisation the account belongs to, but
 `cluster list` shows only the current organisation's clusters.** A user can therefore be refused a
-free cluster while `cluster list` comes back empty, because the cluster consuming the quota sits
-in another of their organisations, and wcloud has no organisation concept: no flag, command or
-field will reveal it. Do not conclude the refusal is a bug, do not retry, and do not tell the user
-the quota is wrong. Explain that the limit covers all their organisations, that this CLI can see
-only one, and send them to `https://console.weaviate.cloud`, where every organisation is visible.
+free cluster while `cluster list` comes back empty, and the CLI cannot tell you why. The cluster
+consuming the quota may sit in another of their organisations, and wcloud has no organisation
+concept: no flag, command or field will reveal it. Or it may be suspended, which `cluster list` may
+not show. Do not conclude the refusal is a bug, do not retry, and do not tell the user the quota is
+wrong. Explain that the limit covers all their organisations and counts suspended clusters, that
+this CLI may not see the cluster, and send them to `https://console.weaviate.cloud`, where every
+organisation is visible and a suspended cluster can be deleted or woken. A free cluster that does
+show up as `SUSPENDED` is covered under [A suspended cluster](#a-suspended-cluster).
 
 **The one collection is the user's only collection.** Creating a collection of sample, demo or
 test data spends it, and the user must then delete that collection before they can load anything
@@ -451,8 +460,24 @@ of their own. Never create a collection on a free cluster without asking the use
 should hold, even when loading sample data is the obvious next step and even when you offered it
 yourself.
 
-Inactive free clusters may be suspended, and if left suspended may eventually be deleted. Do not
-state a specific inactivity window or expiry date; direct the user to the console.
+#### A suspended cluster
+
+A suspended free cluster still counts toward the one-free-cluster limit. A user refused a free create
+already has a free cluster, which may be suspended or active, and may sit in another organisation.
+
+- `cluster list` may show the cluster with `status` `SUSPENDED`, and may not. Do not promise that
+  the list will show it, and never read an empty list as proof that none exists.
+- A `SUSPENDED` row explains a refused free create only if its `tier` is `free`. A suspended
+  cluster of any other tier is not the one holding the free slot: report that it is suspended, and
+  do not offer it as the cause of the refusal.
+- Never connect to a `SUSPENDED` cluster, health-check it, or load data into it, and do not offer
+  to, whether or not you hold an API key for it. This guide makes no claim about whether such a key
+  still answers.
+- The CLI cannot delete or wake a cluster, and no command will. Ask the user to choose: delete the
+  cluster to free the slot for a new free one; wake it up (unsuspend it) to use that cluster; or
+  leave it as it is, which keeps the slot taken.
+- The user deletes or wakes the cluster in the console at `https://console.weaviate.cloud`, which
+  calls a suspended cluster paused and labels the controls `Delete now` and `Wake up`.
 
 ### Inspect clusters
 
@@ -462,8 +487,9 @@ wcloud cluster get <cluster-id> -o json     # one cluster object
 wcloud cluster status <cluster-id> -o json  # {"data": "CREATING", ...} — a bare status string
 ```
 
-An empty `cluster list` does not prove the account has no clusters anywhere; see
-[Free-tier limits](#free-tier-limits). If a cluster ends in `FAILED`, `get` includes
+An empty `cluster list` does not prove the account has no clusters anywhere: one may sit in another
+organisation or be suspended. See [Free-tier limits](#free-tier-limits). If a cluster ends in
+`FAILED`, `get` includes
 `data.status_reason` (free-form text explaining why — see
 [Result handling](#result-handling)).
 

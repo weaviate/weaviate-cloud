@@ -648,3 +648,101 @@ func TestGuideMCPRequirementsAndFallback(t *testing.T) {
 		t.Error(`guide uses the console's "<Your API Key>"; the guide's placeholder is <your-api-key>`)
 	}
 }
+
+func suspendedClusterSection(t *testing.T, md string) string {
+	t.Helper()
+	_, after, found := strings.Cut(md, "\n#### A suspended cluster\n")
+	if !found {
+		t.Fatal(`guide has no "#### A suspended cluster" section`)
+	}
+	body, _, found := strings.Cut(after, "\n#")
+	if !found {
+		t.Fatal("#### A suspended cluster is not followed by another heading")
+	}
+	return strings.Join(strings.Fields(body), " ")
+}
+
+// The section is checked for digits so that no inactivity or deletion period can be stated in it.
+func TestGuideExplainsTheSuspendedFreeCluster(t *testing.T) {
+	t.Parallel()
+	md := guide.Markdown()
+	body := suspendedClusterSection(t, md)
+
+	if n := strings.Count(md, "#### A suspended cluster"); n != 1 {
+		t.Errorf("guide has %d suspended-cluster headings, want 1", n)
+	}
+
+	required := []struct {
+		name   string
+		phrase string
+	}{
+		{"counts toward the limit", "still counts toward the one-free-cluster limit"},
+		{"tier gate", "only if its `tier` is `free`"},
+		{"no connecting", "Never connect to a `SUSPENDED` cluster"},
+		{"no key claim", "makes no claim about whether such a key still answers"},
+		{"cli cannot act", "The CLI cannot delete or wake a cluster"},
+		{"console url", "https://console.weaviate.cloud"},
+	}
+	for _, tc := range required {
+		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+			if !strings.Contains(body, tc.phrase) {
+				t.Errorf("suspended-cluster section missing %q", tc.phrase)
+			}
+		})
+	}
+
+	if strings.ContainsAny(body, "0123456789") {
+		t.Error("suspended-cluster section contains a digit; it must not name an inactivity or deletion period")
+	}
+}
+
+func TestGuideSuspendedSectionIsLinkedAndOrdered(t *testing.T) {
+	t.Parallel()
+	md := guide.Markdown()
+
+	if !strings.Contains(md, "[A suspended cluster](#a-suspended-cluster)") {
+		t.Error("guide does not link to the suspended-cluster section")
+	}
+
+	for _, phrase := range []string{"wcloud cluster delete", "wcloud cluster unsuspend", "wcloud cluster wake"} {
+		if strings.Contains(md, phrase) {
+			t.Errorf("guide names a command the CLI does not have: %q", phrase)
+		}
+	}
+
+	limits := strings.Index(md, "\n### Free-tier limits\n")
+	section := strings.Index(md, "\n#### A suspended cluster\n")
+	inspect := strings.Index(md, "\n### Inspect clusters\n")
+	if limits < 0 || section < limits || inspect < section {
+		t.Errorf("section order wrong: free-tier=%d suspended=%d inspect=%d", limits, section, inspect)
+	}
+}
+
+func TestGuideTellsAReadOnlyMemberToAskAnAdministrator(t *testing.T) {
+	t.Parallel()
+	md := strings.Join(strings.Fields(guide.Markdown()), " ")
+
+	required := []struct {
+		name   string
+		phrase string
+	}{
+		{"keyed on the error code", "Exit 5 / `permission_denied` on any command probably means"},
+		{"asks for a higher role", "to ask their organisation administrator for a different, higher role"},
+		{
+			"no continuation offered",
+			"Do not offer to install agent skills (`weaviate/agent-skills`) or connect the MCP server",
+		},
+		{"no console key", "do not send them to the console for a new key"},
+		{"code, not exit code alone", "which `access_restricted` shares"},
+		{"definition of done carries the exception", "The exception is a read-only member"},
+	}
+	for _, tc := range required {
+		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+			if !strings.Contains(md, tc.phrase) {
+				t.Errorf("guide missing %q", tc.phrase)
+			}
+		})
+	}
+}
