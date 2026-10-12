@@ -29,12 +29,8 @@ case "$VERSION" in
     ;;
 esac
 
-# WHY: staging under a fixed non-default tag keeps every package unreachable via its
-# conventional install path until the reveal phase publishes the main package under the
-# real tag; the platform packages are pulled by exact version pin, not by tag, so which
-# tag they carry never matters to an installer.
-STAGE_TAG="next"
-
+# WHY: staging the platform packages under latest before the reveal is safe for the main
+# package, which pins them by exact version.
 DIST_TAG="latest"
 case "$VERSION" in
   *-*) DIST_TAG="next" ;;
@@ -119,9 +115,9 @@ if [ "$PHASE" = "stage" ]; then
 
     copy_binary "$platform" "$goos" "$goarch"
     set_version "$NPM_DIR/weaviate-cloud-${platform}"
-    publish_pkg "$NPM_DIR/weaviate-cloud-${platform}" "$STAGE_TAG"
+    publish_pkg "$NPM_DIR/weaviate-cloud-${platform}" "$DIST_TAG"
   done
-  echo "npm-publish: staged version $VERSION (platform packages published under $STAGE_TAG)"
+  echo "npm-publish: staged version $VERSION (platform packages published under $DIST_TAG)"
 else
   publish_pkg "$MAIN_DIR" "$DIST_TAG"
   echo "npm-publish: published version $VERSION under dist-tag $DIST_TAG"
