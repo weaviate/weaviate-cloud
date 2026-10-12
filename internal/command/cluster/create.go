@@ -73,7 +73,7 @@ func NewCreateCmd(f *factory.Factory) *cobra.Command {
 
 	cmd.Flags().StringVar(&req.Name, "name", "", "Cluster name (default: automatically generated)")
 	cmd.Flags().StringVar(&req.Region, "region", "",
-		"Region ID (optional; if omitted, your account's default region is used)")
+		"Region ID (optional; if omitted, eu-central-1 is used)")
 	cmd.Flags().StringVar(&req.Tier, "tier", "", "Cluster tier (default: free)")
 	cmd.Flags().BoolVarP(&doWait, "wait", "w", false, "Block until the cluster is READY")
 	cmd.Flags().DurationVar(&timeoutFlag, "timeout", 0,
