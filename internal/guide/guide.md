@@ -208,8 +208,8 @@ produces, not a closed set it validates incoming values against. Treat an unreco
    round-trip.
 
 4. **Create the cluster.** Tell the user first that
-   provisioning typically takes a few minutes and the command is still working — a normal wait,
-   not a hang.
+   provisioning takes from seconds to minutes and that a command still working is a normal wait,
+   not a hang. With `--wait` the CLI waits up to 15 minutes by default; `--timeout` changes that.
 
    The cluster name is auto-generated when `--name` is omitted. Omit `--name`; do not ask the user for a name and do not invent one.
 
@@ -247,8 +247,9 @@ produces, not a closed set it validates incoming values against. Treat an unreco
 
    Connect, install, and operate only on the user's choice; see [Connect MCP](#connect-mcp) and
    [Consuming a cluster](#consuming-a-cluster). If the user asks for sample data, say first
-   that a free cluster holds **one** collection and ask what that collection should hold — see
-   [Free-tier limits](#free-tier-limits).
+   that a free cluster holds **one** collection and ask what that collection should hold and which
+   vectorizer it should use. See [Free-tier limits](#free-tier-limits) and
+   [Choosing a vectorizer](#choosing-a-vectorizer).
 
 ## Result handling
 
@@ -393,9 +394,9 @@ enum; do not compare the two. Today exactly one region comes back — `eu-centra
 
 ### Create a cluster
 
-Flags: `--name` (optional, auto-generated if omitted), `--region` (optional; your account's
-default region if omitted), `--tier` (optional; the effective default is `free`), `--wait`/`-w`,
-and `--timeout` (requires `--wait`).
+Flags: `--name` (optional, auto-generated if omitted), `--region` (optional; `eu-central-1` if
+omitted), `--tier` (optional; the effective default is `free`), `--wait`/`-w`, and `--timeout`
+(requires `--wait`).
 
 **`free` is the only accepted `--tier` value.** Pass `free`, or omit the flag and let the backend
 apply its own default. Anything else is rejected by the **API**, not by the CLI, so a bad value
@@ -426,6 +427,13 @@ is `agent` when any of the sixteen coding-harness environment variables this CLI
 to `1` or `true`, or when `AGENT` is set to any non-empty value; otherwise `cli`. Only that one
 word is sent, and only to the Weaviate Cloud API — not which harness matched, and nothing else
 about the environment.
+
+### Storing the API key
+
+The API key is shown once, in `data.api_key.value`, and cannot be retrieved again. Give it to the
+user, and keep it out of shell history, logs and source control. Tell the user to keep it in an
+environment variable or a secret manager. The file-mode advice under
+[Consuming a cluster](#consuming-a-cluster) applies if it must go in a `.env` file.
 
 ### Free-tier limits
 
@@ -633,6 +641,13 @@ first — the process default mode (often `0644`) would leave the key world-read
 
 **Runtime requirement:** the skill runs Python 3.11+ / `uv` scripts. Ensure `uv` is installed
 (`pip install uv` or `brew install uv`).
+
+### Choosing a vectorizer
+
+A free cluster holds one collection, so its vectorizer is chosen once: ask the user before creating
+the collection rather than picking a default. A vectorizer backed by a third-party model needs the
+user's own provider API key, which wcloud does not supply. A collection with no vectorizer needs
+vectors supplied with every object, and semantic text search will not work on it.
 
 ### Fallback (no Python or uncovered harness)
 
