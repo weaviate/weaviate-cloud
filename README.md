@@ -20,7 +20,7 @@ between v0.1 releases.
 
 ### Build from source
 
-Requires **Go 1.26.6 or newer** (the floor is set in `go.mod`).
+Requires **Go 1.26.9 or newer** (the floor is set in `go.mod`).
 
 ```
 git clone https://github.com/weaviate/weaviate-cloud

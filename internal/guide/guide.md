@@ -27,7 +27,7 @@ Devin URLs: paths checked 2026-07-28 against
 
 ## Install
 
-Requires **Go 1.26.6 or newer** (see `go.mod`).
+Requires **Go 1.26.9 or newer** (see `go.mod`).
 
 ```
 go install github.com/weaviate/weaviate-cloud/cmd/wcloud@latest

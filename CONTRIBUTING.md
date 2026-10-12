@@ -15,8 +15,8 @@ to a matching toolchain:
 mise install
 ```
 
-That gives you Go 1.26.6, golangci-lint 2.12.2 and mockery 2.53.6, the same versions CI uses.
-Without mise, install those versions yourself; `go.mod` sets the Go floor at 1.26.6 and an
+That gives you Go 1.26.9, golangci-lint 2.12.2 and mockery 2.53.6, the same versions CI uses.
+Without mise, install those versions yourself; `go.mod` sets the Go floor at 1.26.9 and an
 older toolchain will not build the module.
 
 If mise is installed but not activated in your shell, prefix commands with `mise exec --`.
