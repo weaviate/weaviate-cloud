@@ -247,9 +247,8 @@ produces, not a closed set it validates incoming values against. Treat an unreco
 
    Connect, install, and operate only on the user's choice; see [Connect MCP](#connect-mcp) and
    [Consuming a cluster](#consuming-a-cluster). If the user asks for sample data, say first
-   that a free cluster holds **one** collection and ask what that collection should hold and which
-   vectorizer it should use. See [Free-tier limits](#free-tier-limits) and
-   [Choosing a vectorizer](#choosing-a-vectorizer).
+   that a free cluster holds **one** collection and ask what that collection should hold — see
+   [Free-tier limits](#free-tier-limits).
 
 ## Result handling
 
@@ -641,13 +640,6 @@ first — the process default mode (often `0644`) would leave the key world-read
 
 **Runtime requirement:** the skill runs Python 3.11+ / `uv` scripts. Ensure `uv` is installed
 (`pip install uv` or `brew install uv`).
-
-### Choosing a vectorizer
-
-A free cluster holds one collection, so its vectorizer is chosen once: ask the user before creating
-the collection rather than picking a default. A vectorizer backed by a third-party model needs the
-user's own provider API key, which wcloud does not supply. A collection with no vectorizer needs
-vectors supplied with every object, and semantic text search will not work on it.
 
 ### Fallback (no Python or uncovered harness)
 

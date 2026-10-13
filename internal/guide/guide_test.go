@@ -748,7 +748,7 @@ func TestGuideTellsAReadOnlyMemberToAskAnAdministrator(t *testing.T) {
 }
 
 // TestGuideCreateTimingAndKeyAdvice pins the create-time wording, the --wait default, the
-// API-key storage advice and the vectorizer note, and rejects the claims they replaced.
+// API-key storage advice, and rejects the claims they replaced.
 func TestGuideCreateTimingAndKeyAdvice(t *testing.T) {
 	t.Parallel()
 	md := guide.Markdown()
@@ -763,9 +763,6 @@ func TestGuideCreateTimingAndKeyAdvice(t *testing.T) {
 		{"key is shown once", "The API key is shown once"},
 		{"key kept out of history, logs and source control", "shell history, logs and source control"},
 		{"key goes in an env var or secret manager", "secret manager"},
-		{"vectorizer heading", "### Choosing a vectorizer"},
-		{"vectorizer note ties to the single collection", "holds one collection, so its vectorizer is chosen once"},
-		{"vectorizer provider key", "own provider API key"},
 		{"region default is applied by the API", "`--region` (optional; `eu-central-1` if\nomitted)"},
 	}
 	for _, tc := range required {
