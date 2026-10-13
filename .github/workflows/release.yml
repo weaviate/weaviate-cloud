@@ -76,7 +76,7 @@ jobs:
 
           case "$VERSION" in
             *-*)
-              echo "flip: prerelease tag, skipping homebrew merge and npm latest promotion" >&2
+              echo "flip: prerelease tag, skipping homebrew merge" >&2
               ;;
             *)
               if [ -n "${HOMEBREW_TAP_TOKEN}" ]; then
