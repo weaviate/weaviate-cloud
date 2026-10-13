@@ -14,7 +14,7 @@ Architecture: thin **hand-rolled** HTTP client. The CLI duplicates wire types fr
 
 ## Toolchain
 
-Tool versions are pinned in `mise.toml` (Go 1.26.6, golangci-lint 2.12.2, mockery 2.53.6). `go.mod` sets the module's Go floor at 1.26.6. Don't change them ad-hoc — bump them in `mise.toml` so CI and local stay aligned. Prefix commands with `mise exec --` if mise is not activated in your shell.
+Tool versions are pinned in `mise.toml` (Go 1.26.9, golangci-lint 2.12.2, mockery 2.53.6). `go.mod` sets the module's Go floor at 1.26.9. Don't change them ad-hoc — bump them in `mise.toml` so CI and local stay aligned. Prefix commands with `mise exec --` if mise is not activated in your shell.
 
 ```bash
 go build ./...                          # build
