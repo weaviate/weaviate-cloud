@@ -89,7 +89,7 @@ func TestGuideLifecycleContent(t *testing.T) {
 		{"outcome A forward to step 7", "Proceed to step 7 of the [End-to-end workflow]", false},
 
 		// expectation-setting at creation start
-		{"provisioning time expectation", "provisioning typically takes a few minutes", true},
+		{"provisioning time expectation", "provisioning takes from seconds to minutes", true},
 
 		// deliver key before optional follow-on; offer data-plane as opt-in
 		{"deliver key first", "one-time key must be delivered to the user before any optional follow-on work", false},
@@ -744,5 +744,45 @@ func TestGuideTellsAReadOnlyMemberToAskAnAdministrator(t *testing.T) {
 				t.Errorf("guide missing %q", tc.phrase)
 			}
 		})
+	}
+}
+
+// TestGuideCreateTimingAndKeyAdvice pins the create-time wording, the --wait default, the
+// API-key storage advice, and rejects the claims they replaced.
+func TestGuideCreateTimingAndKeyAdvice(t *testing.T) {
+	t.Parallel()
+	md := guide.Markdown()
+
+	required := []struct {
+		name   string
+		phrase string
+	}{
+		{"create wait default stated in the workflow", "waits up to 15 minutes by default"},
+		{"creation time is seconds to minutes", "seconds to minutes"},
+		{"key storage heading", "### Storing the API key"},
+		{"key is shown once", "The API key is shown once"},
+		{"key kept out of history, logs and source control", "shell history, logs and source control"},
+		{"key goes in an env var or secret manager", "secret manager"},
+		{"region default is applied by the API", "`--region` (optional; `eu-central-1` if\nomitted)"},
+	}
+	for _, tc := range required {
+		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+			if !strings.Contains(md, tc.phrase) {
+				t.Errorf("guide missing required content %q", tc.phrase)
+			}
+		})
+	}
+
+	rejected := []string{
+		"typically takes a few minutes",
+		"your account's\ndefault region",
+		"default region if omitted",
+		"do not put it on a command line",
+	}
+	for _, phrase := range rejected {
+		if strings.Contains(md, phrase) {
+			t.Errorf("guide still contains the superseded claim %q", phrase)
+		}
 	}
 }

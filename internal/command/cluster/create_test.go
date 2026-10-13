@@ -409,6 +409,22 @@ func TestClusterCreateWaitFlagDefinitions(t *testing.T) {
 	}
 }
 
+func TestClusterCreateRegionUsageNamesTheAppliedDefault(t *testing.T) {
+	t.Parallel()
+	cmd := cluster.NewCreateCmd(&factory.Factory{})
+
+	regionFlag := cmd.Flags().Lookup("region")
+	if regionFlag == nil {
+		t.Fatal("expected --region flag to be registered")
+	}
+	if !strings.Contains(regionFlag.Usage, "eu-central-1") {
+		t.Fatalf("--region usage = %q, want it to name eu-central-1", regionFlag.Usage)
+	}
+	if strings.Contains(regionFlag.Usage, "your account") {
+		t.Fatalf("--region usage = %q, must not claim an account-level default", regionFlag.Usage)
+	}
+}
+
 //nolint:paralleltest // t.Setenv via cmdtest.NewFactory; incompatible with t.Parallel
 func TestClusterCreateWaitProgressStderr(t *testing.T) {
 	f, apiMock, stdout := cmdtest.NewFactory(t, true)
