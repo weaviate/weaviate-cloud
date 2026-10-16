@@ -7,6 +7,7 @@ import (
 	"errors"
 	"os"
 	"path/filepath"
+	"slices"
 	"strings"
 	"testing"
 	"time"
@@ -61,6 +62,11 @@ type installEnvelope struct {
 			Harness string `json:"harness"`
 			Path    string `json:"path"`
 		} `json:"installed"`
+		Harnesses []struct {
+			Harness string `json:"harness"`
+			Path    string `json:"path"`
+			Hint    string `json:"hint"`
+		} `json:"harnesses"`
 	} `json:"data"`
 }
 
@@ -436,23 +442,42 @@ func TestInstallInteractivePreselectsDetected(t *testing.T) {
 	}
 }
 
+func assertHarnessEntry(t *testing.T, env installEnvelope, harness, path, hintHas string) {
+	t.Helper()
+	if len(env.Data.Harnesses) != 1 {
+		t.Fatalf("harnesses = %+v, want exactly one entry", env.Data.Harnesses)
+	}
+	h := env.Data.Harnesses[0]
+	if h.Harness != harness || h.Path != path {
+		t.Errorf("harnesses[0] = {%q %q}, want {%q %q}", h.Harness, h.Path, harness, path)
+	}
+	if !strings.Contains(h.Hint, hintHas) {
+		t.Errorf("hint %q does not contain %q", h.Hint, hintHas)
+	}
+	if !strings.HasSuffix(h.Hint, "have the agent read the SKILL.md at the reported path directly.") {
+		t.Errorf("hint %q does not end with the fallback sentence", h.Hint)
+	}
+}
+
 //nolint:paralleltest // t.Setenv
 func TestInstallEachHarness(t *testing.T) {
 	const agents = ".agents/skills/wcloud/SKILL.md"
 	cases := []struct {
-		flag  string
-		rel   string
-		label string
+		flag     string
+		rel      string
+		label    string
+		reported string
+		hintHas  string
 	}{
-		{"claude-code", ".claude/skills/wcloud/SKILL.md", "claude-code"},
-		{"codex", agents, "agents"},
-		{"cursor", agents, "agents"},
-		{"gemini-cli", agents, "agents"},
-		{"copilot", agents, "agents"},
-		{"opencode", agents, "agents"},
-		{"antigravity", ".gemini/antigravity-cli/skills/wcloud/SKILL.md", "antigravity"},
-		{"devin", agents, "agents"},
-		{"windsurf", agents, "agents"},
+		{"claude-code", ".claude/skills/wcloud/SKILL.md", "claude-code", "claude-code", "/reload-skills"},
+		{"codex", agents, "agents", "codex", "restart Codex"},
+		{"cursor", agents, "agents", "cursor", "new chat"},
+		{"gemini-cli", agents, "agents", "gemini-cli", "/skills reload"},
+		{"copilot", agents, "agents", "copilot", "VS Code"},
+		{"opencode", agents, "agents", "opencode", "new session"},
+		{"antigravity", ".gemini/antigravity-cli/skills/wcloud/SKILL.md", "antigravity", "antigravity", "1.2.4"},
+		{"devin", agents, "agents", "devin", "new session"},
+		{"windsurf", agents, "agents", "devin", "new session"},
 	}
 	for _, tc := range cases {
 		t.Run(tc.flag, func(t *testing.T) {
@@ -477,6 +502,8 @@ func TestInstallEachHarness(t *testing.T) {
 			if got := env.Data.Installed[0]; got.Path != want || got.Harness != tc.label {
 				t.Errorf("installed[0] = %+v, want path %q harness %q", got, want, tc.label)
 			}
+
+			assertHarnessEntry(t, env, tc.reported, want, tc.hintHas)
 		})
 	}
 }
@@ -503,6 +530,10 @@ func TestInstallAntigravityProjectScope(t *testing.T) {
 	if len(env.Data.Installed) != 1 || env.Data.Installed[0].Harness != "agents" ||
 		!strings.HasSuffix(env.Data.Installed[0].Path, filepath.Join(".agents", "skills", "wcloud", "SKILL.md")) {
 		t.Errorf("installed = %+v, want one entry labelled agents under .agents", env.Data.Installed)
+	}
+	if len(env.Data.Harnesses) != 1 ||
+		!strings.HasSuffix(env.Data.Harnesses[0].Path, filepath.Join(".agents", "skills", "wcloud", "SKILL.md")) {
+		t.Errorf("harnesses = %+v, want one entry with the project .agents path", env.Data.Harnesses)
 	}
 }
 
@@ -598,6 +629,94 @@ func TestInstallHelpStatesCoverage(t *testing.T) {
 		if !strings.Contains(help, want) {
 			t.Errorf("help does not contain %q:\n%s", want, help)
 		}
+	}
+}
+
+//nolint:paralleltest // t.Setenv
+func TestInstallReportsEveryHarnessWithAll(t *testing.T) {
+	f, stdout := newSkillFactory(t, "", false)
+
+	if err := runSkill(t, f, "skill", "install", "--all", "-o", "json"); err != nil {
+		t.Fatalf("install --all: %v", err)
+	}
+	env := decodeInstall(t, stdout)
+	want := []string{"claude-code", "codex", "cursor", "gemini-cli", "copilot", "opencode", "antigravity", "devin"}
+	if len(env.Data.Harnesses) != len(want) {
+		t.Fatalf("harnesses has %d entries, want %d: %+v", len(env.Data.Harnesses), len(want), env.Data.Harnesses)
+	}
+	for i, h := range env.Data.Harnesses {
+		if h.Harness != want[i] || h.Path == "" || h.Hint == "" {
+			t.Errorf("harnesses[%d] = %+v, want harness %q with a path and a hint", i, h, want[i])
+		}
+	}
+}
+
+//nolint:paralleltest // t.Setenv
+func TestInstallHarnessEntriesDedupInFirstSeenOrder(t *testing.T) {
+	f, stdout := newSkillFactory(t, "", false)
+
+	if err := runSkill(t, f, "skill", "install", "--harness", "windsurf,codex,devin,codex", "-o", "json"); err != nil {
+		t.Fatalf("install: %v", err)
+	}
+	env := decodeInstall(t, stdout)
+	if len(env.Data.Harnesses) != 2 || env.Data.Harnesses[0].Harness != "devin" ||
+		env.Data.Harnesses[1].Harness != "codex" {
+		t.Errorf("harnesses = %+v, want [devin codex]", env.Data.Harnesses)
+	}
+	if len(env.Data.Installed) != 1 {
+		t.Errorf("installed = %+v, want one shared path", env.Data.Installed)
+	}
+}
+
+//nolint:paralleltest // t.Setenv
+func TestInstallJSONIsAdditiveOnly(t *testing.T) {
+	f, stdout := newSkillFactory(t, "", false)
+
+	if err := runSkill(t, f, "skill", "install", "--harness", "claude-code", "-o", "json"); err != nil {
+		t.Fatalf("install: %v", err)
+	}
+	var env map[string]map[string]json.RawMessage
+	if err := json.Unmarshal(stdout.Bytes(), &env); err != nil {
+		t.Fatalf("decode envelope: %v", err)
+	}
+	keys := func(m map[string]json.RawMessage) []string {
+		out := make([]string, 0, len(m))
+		for k := range m {
+			out = append(out, k)
+		}
+		slices.Sort(out)
+		return out
+	}
+	if got, want := keys(env["data"]), []string{"harnesses", "installed"}; !slices.Equal(got, want) {
+		t.Errorf("data keys = %v, want %v", got, want)
+	}
+	if got, want := keys(env["metadata"]), []string{"api_version", "request_id"}; !slices.Equal(got, want) {
+		t.Errorf("metadata keys = %v, want %v", got, want)
+	}
+}
+
+//nolint:paralleltest // t.Setenv
+func TestInstallTextShowsTableThenHintLines(t *testing.T) {
+	f, stdout := newSkillFactory(t, "", false)
+
+	if err := runSkill(t, f, "skill", "install", "--harness", "claude-code,codex", "-o", "text"); err != nil {
+		t.Fatalf("install -o text: %v", err)
+	}
+	parts := strings.Split(strings.TrimRight(stdout.String(), "\n"), "\n\n")
+	if len(parts) != 2 {
+		t.Fatalf("text output has %d blocks, want table then hint lines:\n%s", len(parts), stdout.String())
+	}
+	table := strings.Split(parts[0], "\n")
+	if len(table) != 3 || !strings.HasPrefix(table[0], "HARNESS") ||
+		!strings.HasPrefix(table[1], "claude-code") || !strings.HasPrefix(table[2], "agents") {
+		t.Errorf("table block changed:\n%s", parts[0])
+	}
+	hints := strings.Split(parts[1], "\n")
+	if len(hints) != 2 || !strings.HasPrefix(hints[0], "claude-code:") ||
+		!strings.Contains(hints[0], "/reload-skills") ||
+		!strings.HasPrefix(hints[1], "codex:") ||
+		!strings.Contains(hints[1], "restart Codex") {
+		t.Errorf("hint block wrong, want one line per harness:\n%s", parts[1])
 	}
 }
 

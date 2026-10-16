@@ -22,6 +22,13 @@ import (
 
 type installResult struct {
 	Installed []installedEntry `json:"installed"`
+	Harnesses []harnessEntry   `json:"harnesses"`
+}
+
+type harnessEntry struct {
+	Harness string `json:"harness"`
+	Path    string `json:"path"`
+	Hint    string `json:"hint"`
 }
 
 type installedEntry struct {
@@ -88,10 +95,25 @@ func runInstall(ctx context.Context, f *factory.Factory, flagAll bool, flagHarne
 	}
 
 	env := output.Envelope[installResult]{
-		Data:     installResult{Installed: entries},
+		Data: installResult{
+			Installed: entries,
+			Harnesses: harnessEntries(selected, home, projectRoot, flagProject),
+		},
 		Metadata: makeMetadata(f),
 	}
 	return output.WriteEnv(f.IOStreams, f.OutputFormat, env, renderInstallText)
+}
+
+func harnessEntries(selected []harness, home, projectRoot string, project bool) []harnessEntry {
+	out := make([]harnessEntry, len(selected))
+	for i, h := range selected {
+		out[i] = harnessEntry{
+			Harness: string(h),
+			Path:    targetPath(h, home, projectRoot, project),
+			Hint:    loadHint(h),
+		}
+	}
+	return out
 }
 
 func resolveSelected(
@@ -250,7 +272,17 @@ func renderInstallText(w io.Writer, r installResult) error {
 	for i, e := range r.Installed {
 		rows[i] = []string{e.Harness, e.Path}
 	}
-	return output.Table(w, []string{"HARNESS", "PATH"}, rows)
+	if err := output.Table(w, []string{"HARNESS", "PATH"}, rows); err != nil {
+		return err
+	}
+	if _, err := fmt.Fprintln(w); err != nil {
+		return err
+	}
+	pairs := make([][2]string, len(r.Harnesses))
+	for i, e := range r.Harnesses {
+		pairs[i] = [2]string{e.Harness, e.Hint}
+	}
+	return output.KeyValue(w, pairs)
 }
 
 func makeMetadata(f *factory.Factory) output.Metadata {

@@ -161,7 +161,9 @@ project-local paths instead of the user-global ones it uses by default.
 `antigravity` and `devin`; `windsurf` is accepted as an alias of `devin`. `copilot` covers
 Copilot CLI and VS Code. `antigravity` writes the Antigravity CLI's folder,
 `~/.gemini/antigravity-cli/skills/`; the Antigravity App and IDE read the project
-`.agents/skills/`, so use `--project` for them.
+`.agents/skills/`, so use `--project` for them. After writing, `skill install` reports for each
+harness you asked for the file it reads and a one-line hint for loading the skill into a session
+that is already running (JSON: `data.harnesses`; text: one line per harness under the path table).
 
 Once a cluster exists, the guide has the agent hand over the endpoint and the one-time API key,
 then offer to install the [`weaviate/agent-skills`](https://github.com/weaviate/agent-skills)

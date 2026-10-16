@@ -4,6 +4,7 @@ package skill
 import (
 	"path/filepath"
 	"slices"
+	"strings"
 	"testing"
 )
 
@@ -131,5 +132,51 @@ func TestResolveTargetsDevinFoldsIntoAgents(t *testing.T) {
 	}
 	if !slices.Equal(paths, want) {
 		t.Fatalf("resolveTargets = %v, want %v", paths, want)
+	}
+}
+
+func TestLoadHints(t *testing.T) {
+	t.Parallel()
+
+	const fallback = "If the skill does not appear, have the agent read the SKILL.md at the reported path directly."
+	cases := []struct {
+		h     harness
+		wants []string
+	}{
+		{harnessClaudeCode, []string{"/reload-skills", "did not exist before this install"}},
+		{harnessCodex, []string{"restart Codex"}},
+		{harnessCursor, []string{"new chat"}},
+		{harnessGeminiCLI, []string{"/skills reload"}},
+		{harnessCopilot, []string{"Copilot CLI: run /skills reload", "VS Code: start a new session"}},
+		{harnessOpenCode, []string{"Start a new session."}},
+		{harnessAntigravity, []string{"Antigravity CLI 1.2.4 or later", "/skills reload", "new conversation"}},
+		{harnessDevin, []string{"Start a new session."}},
+	}
+	if len(cases) != len(knownHarnesses) {
+		t.Fatalf("hint table covers %d harnesses, knownHarnesses has %d", len(cases), len(knownHarnesses))
+	}
+	for _, tc := range cases {
+		t.Run(string(tc.h), func(t *testing.T) {
+			t.Parallel()
+			hint := loadHint(tc.h)
+			if !strings.HasSuffix(hint, fallback) {
+				t.Errorf("hint %q does not end with the mandatory fallback sentence", hint)
+			}
+			for _, w := range tc.wants {
+				if !strings.Contains(hint, w) {
+					t.Errorf("hint %q does not contain %q", hint, w)
+				}
+			}
+		})
+	}
+}
+
+func TestHousewordedHintsNameNoCommand(t *testing.T) {
+	t.Parallel()
+
+	for _, h := range []harness{harnessOpenCode, harnessDevin} {
+		if strings.Contains(loadHint(h), "/") {
+			t.Errorf("%s hint %q must not read as a vendor command; the docs are silent", h, loadHint(h))
+		}
 	}
 }

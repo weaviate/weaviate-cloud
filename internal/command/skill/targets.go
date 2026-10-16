@@ -81,3 +81,25 @@ func harnessNames() []string {
 	}
 	return names
 }
+
+const (
+	hintFallback   = "If the skill does not appear, have the agent read the SKILL.md at the reported path directly."
+	hintNewSession = "Start a new session."
+)
+
+//nolint:gochecknoglobals // immutable lookup keyed by harness; cannot be a const
+var loadHints = map[harness]string{
+	harnessClaudeCode: "Skills in an existing skills folder load live. " +
+		"Run /reload-skills if the folder did not exist before this install.",
+	harnessCodex:       "Codex detects the change itself; restart Codex if it does not appear.",
+	harnessCursor:      "Start a new chat; an open chat keeps the skill list it began with.",
+	harnessGeminiCLI:   "Run /skills reload.",
+	harnessCopilot:     "Copilot CLI: run /skills reload. VS Code: start a new session.",
+	harnessOpenCode:    hintNewSession,
+	harnessAntigravity: "Antigravity CLI 1.2.4 or later: run /skills reload. Otherwise start a new conversation.",
+	harnessDevin:       hintNewSession,
+}
+
+func loadHint(h harness) string {
+	return loadHints[h] + " " + hintFallback
+}
