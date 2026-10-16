@@ -74,6 +74,7 @@ func TestGuideRequiredPhrases(t *testing.T) {
 		{"cluster id row takes precedence", "the last row applies whatever the exit code"},
 		{"unscoped create row", "or is killed, with no `error.details.cluster_id`"},
 		{"manual poll stops on a terminal status", "if a poll returns `FAILED`, `DELETED`, `EXPIRED` or `SUSPENDED`"},
+		{"recovered key may be empty", "If the key is empty, apply step 4."},
 		{"poll bound", "5 more minutes"},
 		{"poll pace", "every 10 seconds"},
 
