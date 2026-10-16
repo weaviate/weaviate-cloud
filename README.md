@@ -157,10 +157,11 @@ across sessions. Pass `--all` or `--harness <name>`; with neither it prompts, wh
 outside an interactive terminal. Add `--project` to write into project-local paths instead of
 the user-global ones it uses by default.
 
-Once a cluster exists, the guide recommends connecting its MCP server (setup for Claude Code,
-Codex, opencode, VS Code and other clients is in `wcloud guide`), or installing
-[`weaviate/agent-skills`](https://github.com/weaviate/agent-skills) to give an agent the
-data-plane skills to query and populate it.
+Once a cluster exists, the guide has the agent hand over the endpoint and the one-time API key,
+then offer to install the [`weaviate/agent-skills`](https://github.com/weaviate/agent-skills)
+skill so it can work with your data in the same session. Connecting the cluster's MCP server is
+offered for later, with a note that most harnesses need a restart for it, and the client
+libraries are the fallback.
 
 ## Exit codes
 
