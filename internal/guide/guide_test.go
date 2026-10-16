@@ -77,6 +77,7 @@ func TestGuideRequiredPhrases(t *testing.T) {
 		{"recovered key may be empty", "If the key is empty, apply step 4."},
 		{"poll bound", "5 more minutes"},
 		{"poll pace", "every 10 seconds"},
+		{"status output is a bare string", "`data` is the bare status string"},
 
 		{"permission denied is a read-only member", "read-only member"},
 		{"permission denied asks an admin", "ask an organisation administrator for a higher role"},
@@ -92,6 +93,11 @@ func TestGuideRequiredPhrases(t *testing.T) {
 		{"ask before spending the collection", "without asking the user"},
 		{"cap example rows", "always cap the row count"},
 
+		{"skills folder is reported by the installer", "The installer's output names the folder it wrote"},
+		{"claude code skills folder", "`~/.claude/skills/weaviate`"},
+		{"windsurf skills folder", "`~/.codeium/windsurf/skills/weaviate`"},
+		{"devin skills folder", "`~/.config/devin/skills/weaviate`"},
+		{"skills without yes installs nothing", "having installed nothing"},
 		{"skills command", "npx -y skills add weaviate/agent-skills --skill weaviate --agent <agent> --global --yes"},
 		{"mcp restart caveat", "must be restarted before the tools appear"},
 		{"intro does not promise mcp in session", "work in this session; MCP does not"},
