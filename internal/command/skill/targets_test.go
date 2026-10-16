@@ -3,31 +3,28 @@ package skill
 
 import (
 	"path/filepath"
+	"slices"
 	"testing"
 )
 
 func TestKnownHarnesses(t *testing.T) {
 	t.Parallel()
-	want := map[harness]bool{
-		harnessClaudeCode: true,
-		harnessCodex:      true,
-		harnessCursor:     true,
-		harnessGeminiCLI:  true,
-		harnessCopilot:    true,
-		harnessOpenCode:   true,
+	want := []harness{
+		harnessClaudeCode,
+		harnessCodex,
+		harnessCursor,
+		harnessGeminiCLI,
+		harnessCopilot,
+		harnessOpenCode,
+		harnessAntigravity,
+		harnessDevin,
 	}
-	if len(knownHarnesses) != len(want) {
-		t.Fatalf("len(knownHarnesses) = %d, want %d", len(knownHarnesses), len(want))
+	if !slices.Equal(knownHarnesses, want) {
+		t.Fatalf("knownHarnesses = %v, want %v (the first six keep their picker numbers)", knownHarnesses, want)
 	}
 	for _, h := range knownHarnesses {
-		if !want[h] {
-			t.Errorf("unexpected harness %q in knownHarnesses", h)
-		}
-	}
-	// windsurf must not appear (path unverified, deferred per Brief decision 4).
-	for _, h := range knownHarnesses {
-		if h == "windsurf" {
-			t.Error("windsurf must not be in knownHarnesses (path unverified, deferred)")
+		if h == harnessAliasWindsurf {
+			t.Error("windsurf is an alias of devin and must not be its own harness")
 		}
 	}
 }
@@ -72,6 +69,16 @@ func TestTargetPaths(t *testing.T) {
 			filepath.Join(home, ".agents", "skills", "wcloud", "SKILL.md"),
 			filepath.Join(proj, ".agents", "skills", "wcloud", "SKILL.md"),
 		},
+		{
+			harnessAntigravity,
+			filepath.Join(home, ".gemini", "antigravity-cli", "skills", "wcloud", "SKILL.md"),
+			filepath.Join(proj, ".agents", "skills", "wcloud", "SKILL.md"),
+		},
+		{
+			harnessDevin,
+			filepath.Join(home, ".agents", "skills", "wcloud", "SKILL.md"),
+			filepath.Join(proj, ".agents", "skills", "wcloud", "SKILL.md"),
+		},
 	}
 
 	for _, tc := range cases {
@@ -111,5 +118,18 @@ func TestResolveTargetsClaudeAndAgents(t *testing.T) {
 	paths := resolveTargets([]harness{harnessClaudeCode, harnessCodex}, home, proj, false)
 	if len(paths) != 2 {
 		t.Fatalf("resolveTargets(claude-code,codex) = %v (len %d), want 2", paths, len(paths))
+	}
+}
+
+func TestResolveTargetsDevinFoldsIntoAgents(t *testing.T) {
+	t.Parallel()
+
+	paths := resolveTargets([]harness{harnessCodex, harnessDevin, harnessAntigravity}, "/h", "/p", false)
+	want := []string{
+		filepath.Join("/h", ".agents", "skills", "wcloud", "SKILL.md"),
+		filepath.Join("/h", ".gemini", "antigravity-cli", "skills", "wcloud", "SKILL.md"),
+	}
+	if !slices.Equal(paths, want) {
+		t.Fatalf("resolveTargets = %v, want %v", paths, want)
 	}
 }

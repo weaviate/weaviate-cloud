@@ -152,10 +152,16 @@ wcloud guide
 ```
 
 `wcloud skill install --all` installs a persistent skill file into every supported harness
-(Claude Code, Codex, Cursor, Gemini CLI, Copilot, opencode), so the agent keeps that context
-across sessions. Pass `--all` or `--harness <name>`; with neither it prompts, which fails
-outside an interactive terminal. Add `--project` to write into project-local paths instead of
-the user-global ones it uses by default.
+(Claude Code, Codex, Cursor, Gemini CLI, Copilot, opencode, Antigravity, Devin), so the agent
+keeps that context across sessions. Pass `--all` or `--harness <name>`; with neither it
+prompts, which fails outside an interactive terminal. Add `--project` to write into
+project-local paths instead of the user-global ones it uses by default.
+
+`--harness` takes `claude-code`, `codex`, `cursor`, `gemini-cli`, `copilot`, `opencode`,
+`antigravity` and `devin`; `windsurf` is accepted as an alias of `devin`. `copilot` covers
+Copilot CLI and VS Code. `antigravity` writes the Antigravity CLI's folder,
+`~/.gemini/antigravity-cli/skills/`; the Antigravity App and IDE read the project
+`.agents/skills/`, so use `--project` for them.
 
 Once a cluster exists, the guide has the agent hand over the endpoint and the one-time API key,
 then offer to install the [`weaviate/agent-skills`](https://github.com/weaviate/agent-skills)

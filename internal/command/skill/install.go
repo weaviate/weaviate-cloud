@@ -9,6 +9,7 @@ import (
 	"maps"
 	"os"
 	"path/filepath"
+	"slices"
 	"strings"
 
 	"github.com/spf13/cobra"
@@ -38,7 +39,13 @@ func NewInstallCmd(f *factory.Factory) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "install",
 		Short: "Install the wcloud SKILL.md into one or more coding harnesses",
-		Args:  errcode.Args(cobra.NoArgs),
+		Long: `Write the wcloud SKILL.md where each coding harness reads skills.
+
+copilot covers Copilot CLI and VS Code. devin covers Devin CLI and Devin Desktop;
+windsurf is accepted as an alias of devin. antigravity writes the Antigravity CLI's
+user folder only: the Antigravity App and IDE read the project .agents/skills, so use
+--project for them.`,
+		Args: errcode.Args(cobra.NoArgs),
 		RunE: func(cmd *cobra.Command, _ []string) error {
 			return runInstall(cmd.Context(), f, flagAll, flagHarness, flagProject)
 		},
@@ -46,7 +53,7 @@ func NewInstallCmd(f *factory.Factory) *cobra.Command {
 
 	cmd.Flags().BoolVar(&flagAll, "all", false, "install to all supported harnesses")
 	cmd.Flags().StringSliceVar(&flagHarness, "harness", nil,
-		"comma-separated harness names: claude-code, codex, cursor, gemini-cli, copilot, opencode")
+		"comma-separated harness names: "+strings.Join(harnessNames(), ", "))
 	cmd.Flags().BoolVar(&flagProject, "project", false,
 		"write to project-local paths instead of user-global (default global)")
 
@@ -143,22 +150,22 @@ func parseHarnesses(raw []string) ([]harness, error) {
 			if part == "" {
 				continue
 			}
+			if part == harnessAliasWindsurf {
+				part = string(harnessDevin)
+			}
 			h := harness(part)
-			if !known[h] {
+			switch {
+			case !known[h]:
 				unknown = append(unknown, part)
-			} else {
+			case !slices.Contains(result, h):
 				result = append(result, h)
 			}
 		}
 	}
 	if len(unknown) > 0 {
-		names := make([]string, len(knownHarnesses))
-		for i, h := range knownHarnesses {
-			names[i] = string(h)
-		}
 		return nil, errcode.New(errcode.CodeValidationFailed,
 			fmt.Sprintf("unknown harness %q; accepted values: %s",
-				strings.Join(unknown, ", "), strings.Join(names, ", ")))
+				strings.Join(unknown, ", "), strings.Join(harnessNames(), ", ")))
 	}
 	return result, nil
 }
@@ -231,6 +238,9 @@ func toggleFrom(preSelected map[harness]bool, line string, errOut io.Writer) []h
 func harnessLabelForPath(p string) string {
 	if strings.Contains(p, "/.claude/") || strings.Contains(p, "\\.claude\\") {
 		return string(harnessClaudeCode)
+	}
+	if strings.HasSuffix(filepath.ToSlash(p), "/.gemini/antigravity-cli/skills/wcloud/SKILL.md") {
+		return string(harnessAntigravity)
 	}
 	return "agents"
 }

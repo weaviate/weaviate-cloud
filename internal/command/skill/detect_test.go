@@ -92,6 +92,7 @@ func TestDetectOrderMatchesKnownHarnesses(t *testing.T) {
 	home := t.TempDir()
 	for _, dir := range []string{
 		".claude", ".codex", ".cursor", ".gemini", copilotDir, filepath.Join(".config", "opencode"),
+		filepath.Join(".gemini", "antigravity-cli"), filepath.Join(".codeium", "windsurf"),
 	} {
 		if err := os.MkdirAll(filepath.Join(home, dir), 0o700); err != nil {
 			t.Fatalf("mkdir %s: %v", dir, err)
@@ -118,6 +119,25 @@ func TestDetectFootprints(t *testing.T) {
 		{"copilot cli folder", []string{copilotDir}, []harness{harnessCopilot}},
 		{"vs code folder", []string{vscodeDir}, []harness{harnessCopilot}},
 		{"both copilot folders report copilot once", []string{copilotDir, vscodeDir}, []harness{harnessCopilot}},
+		{"gemini folder alone is gemini-cli only", []string{".gemini"}, []harness{harnessGeminiCLI}},
+		{
+			"antigravity cli folder also shows its gemini parent",
+			[]string{filepath.Join(".gemini", "antigravity-cli")},
+			[]harness{harnessGeminiCLI, harnessAntigravity},
+		},
+		{".codeium alone is no harness", []string{".codeium"}, nil},
+		{"windsurf folder", []string{filepath.Join(".codeium", "windsurf")}, []harness{harnessDevin}},
+		{"devin cli folder", []string{filepath.Join(".config", "devin")}, []harness{harnessDevin}},
+		{
+			"both devin folders report devin once",
+			[]string{filepath.Join(".codeium", "windsurf"), filepath.Join(".config", "devin")},
+			[]harness{harnessDevin},
+		},
+		{
+			"opencode and devin share .config",
+			[]string{filepath.Join(".config", "opencode"), filepath.Join(".config", "devin")},
+			[]harness{harnessOpenCode, harnessDevin},
+		},
 	}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {

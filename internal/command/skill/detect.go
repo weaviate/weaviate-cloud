@@ -14,10 +14,12 @@ var footprints = []struct {
 	{harnessClaudeCode, []string{".claude"}},
 	{harnessCodex, []string{".codex"}},
 	{harnessCursor, []string{".cursor"}},
-	{harnessGeminiCLI, []string{".gemini"}},
+	{harnessGeminiCLI, []string{geminiDir}},
 	// WHY: VS Code runs Copilot and reads the shared skills folder; .vscode is its per-user folder on all three OSes.
 	{harnessCopilot, []string{".copilot", ".vscode"}},
 	{harnessOpenCode, []string{filepath.Join(".config", "opencode")}},
+	{harnessAntigravity, []string{filepath.Join(geminiDir, "antigravity-cli")}},
+	{harnessDevin, []string{filepath.Join(".codeium", "windsurf"), filepath.Join(".config", "devin")}},
 }
 
 // detectHarnesses returns the subset of knownHarnesses with at least one config
