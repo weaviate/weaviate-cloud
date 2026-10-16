@@ -77,7 +77,6 @@ func TestDetect(t *testing.T) {
 		t.Fatalf("opencode must not be detected from .agents")
 	}
 
-	// .config/opencode detects opencode.
 	if err := os.MkdirAll(filepath.Join(home, ".config", "opencode"), 0o700); err != nil {
 		t.Fatalf("mkdir .config/opencode: %v", err)
 	}

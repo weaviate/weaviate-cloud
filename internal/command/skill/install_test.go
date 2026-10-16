@@ -578,13 +578,14 @@ func TestInstallExistingHarnessesJSONUnchanged(t *testing.T) {
 	if err = json.Compact(&got, env.Data.Installed); err != nil {
 		t.Fatalf("compact installed: %v", err)
 	}
-	claude, _ := json.Marshal(filepath.Join(home, ".claude", "skills", "wcloud", "SKILL.md"))
-	agents, _ := json.Marshal(filepath.Join(home, ".agents", "skills", "wcloud", "SKILL.md"))
-	want := `[{"harness":"claude-code","path":` + string(
-		claude,
-	) + `},{"harness":"agents","path":` + string(
-		agents,
-	) + `}]`
+	wantJSON, err := json.Marshal([]map[string]string{
+		{"harness": "claude-code", "path": filepath.Join(home, ".claude", "skills", "wcloud", "SKILL.md")},
+		{"harness": "agents", "path": filepath.Join(home, ".agents", "skills", "wcloud", "SKILL.md")},
+	})
+	if err != nil {
+		t.Fatalf("marshal expected installed: %v", err)
+	}
+	want := string(wantJSON)
 	if got.String() != want {
 		t.Errorf("data.installed changed for the six existing harnesses\n got: %s\nwant: %s", got.String(), want)
 	}

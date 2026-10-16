@@ -23,11 +23,6 @@ func TestKnownHarnesses(t *testing.T) {
 	if !slices.Equal(knownHarnesses, want) {
 		t.Fatalf("knownHarnesses = %v, want %v (the first six keep their picker numbers)", knownHarnesses, want)
 	}
-	for _, h := range knownHarnesses {
-		if h == harnessAliasWindsurf {
-			t.Error("windsurf is an alias of devin and must not be its own harness")
-		}
-	}
 }
 
 func TestTargetPaths(t *testing.T) {
