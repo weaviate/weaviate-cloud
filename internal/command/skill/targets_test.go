@@ -3,32 +3,25 @@ package skill
 
 import (
 	"path/filepath"
+	"slices"
+	"strings"
 	"testing"
 )
 
 func TestKnownHarnesses(t *testing.T) {
 	t.Parallel()
-	want := map[harness]bool{
-		harnessClaudeCode: true,
-		harnessCodex:      true,
-		harnessCursor:     true,
-		harnessGeminiCLI:  true,
-		harnessCopilot:    true,
-		harnessOpenCode:   true,
+	want := []harness{
+		harnessClaudeCode,
+		harnessCodex,
+		harnessCursor,
+		harnessGeminiCLI,
+		harnessCopilot,
+		harnessOpenCode,
+		harnessAntigravity,
+		harnessDevin,
 	}
-	if len(knownHarnesses) != len(want) {
-		t.Fatalf("len(knownHarnesses) = %d, want %d", len(knownHarnesses), len(want))
-	}
-	for _, h := range knownHarnesses {
-		if !want[h] {
-			t.Errorf("unexpected harness %q in knownHarnesses", h)
-		}
-	}
-	// windsurf must not appear (path unverified, deferred per Brief decision 4).
-	for _, h := range knownHarnesses {
-		if h == "windsurf" {
-			t.Error("windsurf must not be in knownHarnesses (path unverified, deferred)")
-		}
+	if !slices.Equal(knownHarnesses, want) {
+		t.Fatalf("knownHarnesses = %v, want %v (the first six keep their picker numbers)", knownHarnesses, want)
 	}
 }
 
@@ -72,6 +65,16 @@ func TestTargetPaths(t *testing.T) {
 			filepath.Join(home, ".agents", "skills", "wcloud", "SKILL.md"),
 			filepath.Join(proj, ".agents", "skills", "wcloud", "SKILL.md"),
 		},
+		{
+			harnessAntigravity,
+			filepath.Join(home, ".gemini", "antigravity-cli", "skills", "wcloud", "SKILL.md"),
+			filepath.Join(proj, ".agents", "skills", "wcloud", "SKILL.md"),
+		},
+		{
+			harnessDevin,
+			filepath.Join(home, ".agents", "skills", "wcloud", "SKILL.md"),
+			filepath.Join(proj, ".agents", "skills", "wcloud", "SKILL.md"),
+		},
 	}
 
 	for _, tc := range cases {
@@ -111,5 +114,64 @@ func TestResolveTargetsClaudeAndAgents(t *testing.T) {
 	paths := resolveTargets([]harness{harnessClaudeCode, harnessCodex}, home, proj, false)
 	if len(paths) != 2 {
 		t.Fatalf("resolveTargets(claude-code,codex) = %v (len %d), want 2", paths, len(paths))
+	}
+}
+
+func TestResolveTargetsDevinFoldsIntoAgents(t *testing.T) {
+	t.Parallel()
+
+	paths := resolveTargets([]harness{harnessCodex, harnessDevin, harnessAntigravity}, "/h", "/p", false)
+	want := []string{
+		filepath.Join("/h", ".agents", "skills", "wcloud", "SKILL.md"),
+		filepath.Join("/h", ".gemini", "antigravity-cli", "skills", "wcloud", "SKILL.md"),
+	}
+	if !slices.Equal(paths, want) {
+		t.Fatalf("resolveTargets = %v, want %v", paths, want)
+	}
+}
+
+func TestLoadHints(t *testing.T) {
+	t.Parallel()
+
+	const fallback = "If the skill does not appear, have the agent read the SKILL.md at the reported path directly."
+	cases := []struct {
+		h     harness
+		wants []string
+	}{
+		{harnessClaudeCode, []string{"/reload-skills", "did not exist before this install"}},
+		{harnessCodex, []string{"restart Codex"}},
+		{harnessCursor, []string{"new chat"}},
+		{harnessGeminiCLI, []string{"/skills reload"}},
+		{harnessCopilot, []string{"Copilot CLI: run /skills reload", "VS Code: start a new session"}},
+		{harnessOpenCode, []string{"Start a new session."}},
+		{harnessAntigravity, []string{"Antigravity CLI 1.2.4 or later", "/skills reload", "new conversation"}},
+		{harnessDevin, []string{"Start a new session."}},
+	}
+	if len(cases) != len(knownHarnesses) {
+		t.Fatalf("hint table covers %d harnesses, knownHarnesses has %d", len(cases), len(knownHarnesses))
+	}
+	for _, tc := range cases {
+		t.Run(string(tc.h), func(t *testing.T) {
+			t.Parallel()
+			hint := loadHint(tc.h)
+			if !strings.HasSuffix(hint, fallback) {
+				t.Errorf("hint %q does not end with the mandatory fallback sentence", hint)
+			}
+			for _, w := range tc.wants {
+				if !strings.Contains(hint, w) {
+					t.Errorf("hint %q does not contain %q", hint, w)
+				}
+			}
+		})
+	}
+}
+
+func TestHousewordedHintsNameNoCommand(t *testing.T) {
+	t.Parallel()
+
+	for _, h := range []harness{harnessOpenCode, harnessDevin} {
+		if strings.Contains(loadHint(h), "/") {
+			t.Errorf("%s hint %q must not read as a vendor command; the docs are silent", h, loadHint(h))
+		}
 	}
 }

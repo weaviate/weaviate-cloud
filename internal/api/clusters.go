@@ -6,9 +6,10 @@ import (
 	"net/url"
 )
 
-// ListClusters returns the caller's READY clusters. The provisioning API does
-// not yet support pagination; the wire envelope still carries a next_cursor
-// field but it is always empty in v0.1.
+// ListClusters returns every non-deleted, non-expired cluster of the caller's
+// organisation, across all tiers and including clusters still being created.
+// The provisioning API does not yet support pagination; the wire envelope still
+// carries a next_cursor field but it is always empty in v0.1.
 func (c *Client) ListClusters(ctx context.Context) ([]Cluster, error) {
 	var env ListEnvelope[Cluster]
 	if err := c.do(ctx, http.MethodGet, "/clusters", nil, &env, nil); err != nil {

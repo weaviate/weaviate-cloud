@@ -9,6 +9,7 @@ import (
 	"maps"
 	"os"
 	"path/filepath"
+	"slices"
 	"strings"
 
 	"github.com/spf13/cobra"
@@ -21,6 +22,13 @@ import (
 
 type installResult struct {
 	Installed []installedEntry `json:"installed"`
+	Harnesses []harnessEntry   `json:"harnesses"`
+}
+
+type harnessEntry struct {
+	Harness string `json:"harness"`
+	Path    string `json:"path"`
+	Hint    string `json:"hint"`
 }
 
 type installedEntry struct {
@@ -38,7 +46,13 @@ func NewInstallCmd(f *factory.Factory) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "install",
 		Short: "Install the wcloud SKILL.md into one or more coding harnesses",
-		Args:  errcode.Args(cobra.NoArgs),
+		Long: `Write the wcloud SKILL.md where each coding harness reads skills.
+
+copilot covers Copilot CLI and VS Code. devin covers Devin CLI and Devin Desktop;
+windsurf is accepted as an alias of devin. antigravity writes the Antigravity CLI's
+user folder only: the Antigravity App and IDE read the project .agents/skills, so use
+--project for them.`,
+		Args: errcode.Args(cobra.NoArgs),
 		RunE: func(cmd *cobra.Command, _ []string) error {
 			return runInstall(cmd.Context(), f, flagAll, flagHarness, flagProject)
 		},
@@ -46,7 +60,7 @@ func NewInstallCmd(f *factory.Factory) *cobra.Command {
 
 	cmd.Flags().BoolVar(&flagAll, "all", false, "install to all supported harnesses")
 	cmd.Flags().StringSliceVar(&flagHarness, "harness", nil,
-		"comma-separated harness names: claude-code, codex, cursor, gemini-cli, copilot, opencode")
+		"comma-separated harness names: "+strings.Join(harnessNames(), ", "))
 	cmd.Flags().BoolVar(&flagProject, "project", false,
 		"write to project-local paths instead of user-global (default global)")
 
@@ -81,10 +95,25 @@ func runInstall(ctx context.Context, f *factory.Factory, flagAll bool, flagHarne
 	}
 
 	env := output.Envelope[installResult]{
-		Data:     installResult{Installed: entries},
+		Data: installResult{
+			Installed: entries,
+			Harnesses: harnessEntries(selected, home, projectRoot, flagProject),
+		},
 		Metadata: makeMetadata(f),
 	}
 	return output.WriteEnv(f.IOStreams, f.OutputFormat, env, renderInstallText)
+}
+
+func harnessEntries(selected []harness, home, projectRoot string, project bool) []harnessEntry {
+	out := make([]harnessEntry, len(selected))
+	for i, h := range selected {
+		out[i] = harnessEntry{
+			Harness: string(h),
+			Path:    targetPath(h, home, projectRoot, project),
+			Hint:    loadHint(h),
+		}
+	}
+	return out
 }
 
 func resolveSelected(
@@ -143,22 +172,22 @@ func parseHarnesses(raw []string) ([]harness, error) {
 			if part == "" {
 				continue
 			}
+			if part == harnessAliasWindsurf {
+				part = string(harnessDevin)
+			}
 			h := harness(part)
-			if !known[h] {
+			switch {
+			case !known[h]:
 				unknown = append(unknown, part)
-			} else {
+			case !slices.Contains(result, h):
 				result = append(result, h)
 			}
 		}
 	}
 	if len(unknown) > 0 {
-		names := make([]string, len(knownHarnesses))
-		for i, h := range knownHarnesses {
-			names[i] = string(h)
-		}
 		return nil, errcode.New(errcode.CodeValidationFailed,
 			fmt.Sprintf("unknown harness %q; accepted values: %s",
-				strings.Join(unknown, ", "), strings.Join(names, ", ")))
+				strings.Join(unknown, ", "), strings.Join(harnessNames(), ", ")))
 	}
 	return result, nil
 }
@@ -232,6 +261,9 @@ func harnessLabelForPath(p string) string {
 	if strings.Contains(p, "/.claude/") || strings.Contains(p, "\\.claude\\") {
 		return string(harnessClaudeCode)
 	}
+	if strings.HasSuffix(filepath.ToSlash(p), "/.gemini/antigravity-cli/skills/wcloud/SKILL.md") {
+		return string(harnessAntigravity)
+	}
 	return "agents"
 }
 
@@ -240,7 +272,17 @@ func renderInstallText(w io.Writer, r installResult) error {
 	for i, e := range r.Installed {
 		rows[i] = []string{e.Harness, e.Path}
 	}
-	return output.Table(w, []string{"HARNESS", "PATH"}, rows)
+	if err := output.Table(w, []string{"HARNESS", "PATH"}, rows); err != nil {
+		return err
+	}
+	if _, err := fmt.Fprintln(w); err != nil {
+		return err
+	}
+	pairs := make([][2]string, len(r.Harnesses))
+	for i, e := range r.Harnesses {
+		pairs[i] = [2]string{e.Harness, e.Hint}
+	}
+	return output.KeyValue(w, pairs)
 }
 
 func makeMetadata(f *factory.Factory) output.Metadata {

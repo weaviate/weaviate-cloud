@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -10,7 +11,10 @@ import (
 	"testing"
 	"time"
 
+	"github.com/stretchr/testify/mock"
+
 	"github.com/weaviate/weaviate-cloud/internal/api"
+	"github.com/weaviate/weaviate-cloud/internal/cmdtest"
 	"github.com/weaviate/weaviate-cloud/internal/errcode"
 	"github.com/weaviate/weaviate-cloud/internal/factory"
 	"github.com/weaviate/weaviate-cloud/internal/iostreams"
@@ -361,5 +365,50 @@ func TestWriteErrorEnvelopeNoResponseText(t *testing.T) {
 		if !strings.Contains(line, phrase) {
 			t.Errorf("text-mode stderr is missing %q\ngot: %s", phrase, line)
 		}
+	}
+}
+
+//nolint:paralleltest // t.Setenv via cmdtest.NewFactory; incompatible with t.Parallel
+func TestWriteErrorEnvelopeUnconfirmedCreate(t *testing.T) {
+	f, apiMock, stdout := cmdtest.NewFactory(t, true)
+
+	var sentKey string
+	apiMock.EXPECT().
+		CreateCluster(mock.Anything, mock.Anything, mock.Anything).
+		Run(func(_ context.Context, _ api.CreateClusterRequest, o api.CreateClusterOptions) {
+			sentKey = o.IdempotencyKey
+		}).
+		Return(nil, errors.New("transport: context deadline exceeded"))
+
+	err := cmdtest.Run(t, f, "cluster", "create")
+	if err == nil {
+		t.Fatal("expected the transport failure to propagate")
+	}
+	writeErrorEnvelope(f, err)
+
+	m := decodeEnvelope(t, stdout.String())
+	assertMetadata(t, m, stdout.String())
+	errObj := errorObject(t, m, stdout.String())
+	msg, _ := errObj["message"].(string)
+	if !strings.Contains(msg, "wcloud cluster list") {
+		t.Errorf("error.message = %q, want it to name 'wcloud cluster list'", msg)
+	}
+	for _, banned := range []string{"resend", "idempotency"} {
+		if strings.Contains(msg, banned) {
+			t.Errorf("error.message = %q, must not mention %q: no wcloud flag accepts a key", msg, banned)
+		}
+	}
+	details, ok := errObj["details"].(map[string]any)
+	if !ok {
+		t.Fatalf("error.details must be an object: %s", stdout.String())
+	}
+	if sentKey == "" {
+		t.Fatal("create sent an empty Idempotency-Key")
+	}
+	if got, _ := details["idempotency_key"].(string); got != sentKey {
+		t.Errorf("error.details.idempotency_key = %v, want %q", details["idempotency_key"], sentKey)
+	}
+	if got := details["cluster_may_exist"]; got != true {
+		t.Errorf("error.details.cluster_may_exist = %v, want true", got)
 	}
 }

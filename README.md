@@ -152,15 +152,24 @@ wcloud guide
 ```
 
 `wcloud skill install --all` installs a persistent skill file into every supported harness
-(Claude Code, Codex, Cursor, Gemini CLI, Copilot, opencode), so the agent keeps that context
-across sessions. Pass `--all` or `--harness <name>`; with neither it prompts, which fails
-outside an interactive terminal. Add `--project` to write into project-local paths instead of
-the user-global ones it uses by default.
+(Claude Code, Codex, Cursor, Gemini CLI, Copilot, opencode, Antigravity, Devin), so the agent
+keeps that context across sessions. Pass `--all` or `--harness <name>`; with neither it
+prompts, which fails outside an interactive terminal. Add `--project` to write into
+project-local paths instead of the user-global ones it uses by default.
 
-Once a cluster exists, the guide recommends connecting its MCP server (setup for Claude Code,
-Codex, opencode, VS Code and other clients is in `wcloud guide`), or installing
-[`weaviate/agent-skills`](https://github.com/weaviate/agent-skills) to give an agent the
-data-plane skills to query and populate it.
+`--harness` takes `claude-code`, `codex`, `cursor`, `gemini-cli`, `copilot`, `opencode`,
+`antigravity` and `devin`; `windsurf` is accepted as an alias of `devin`. `copilot` covers
+Copilot CLI and VS Code. `antigravity` writes the Antigravity CLI's folder,
+`~/.gemini/antigravity-cli/skills/`; the Antigravity App and IDE read the project
+`.agents/skills/`, so use `--project` for them. After writing, `skill install` reports for each
+harness you asked for the file it reads and a one-line hint for loading the skill into a session
+that is already running (JSON: `data.harnesses`; text: one line per harness under the path table).
+
+Once a cluster exists, the guide has the agent hand over the endpoint and the one-time API key,
+then offer to install the [`weaviate/agent-skills`](https://github.com/weaviate/agent-skills)
+skill so it can work with your data in the same session. Connecting the cluster's MCP server is
+offered for later, with a note that most harnesses need a restart for it, and the client
+libraries are the fallback.
 
 ## Exit codes
 

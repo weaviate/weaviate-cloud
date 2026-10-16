@@ -3,27 +3,35 @@ package skill
 import (
 	"os"
 	"path/filepath"
+	"slices"
 )
 
 //nolint:gochecknoglobals // immutable ordered mapping; cannot be a const
 var footprints = []struct {
-	h   harness
-	dir string
+	h    harness
+	dirs []string
 }{
-	{harnessClaudeCode, ".claude"},
-	{harnessCodex, ".codex"},
-	{harnessCursor, ".cursor"},
-	{harnessGeminiCLI, ".gemini"},
-	{harnessCopilot, ".copilot"},
-	{harnessOpenCode, ".agents"},
+	{harnessClaudeCode, []string{".claude"}},
+	{harnessCodex, []string{".codex"}},
+	{harnessCursor, []string{".cursor"}},
+	{harnessGeminiCLI, []string{geminiDir}},
+	// WHY: VS Code runs Copilot and reads the shared skills folder; .vscode is its per-user folder on all three OSes.
+	{harnessCopilot, []string{".copilot", ".vscode"}},
+	{harnessOpenCode, []string{filepath.Join(".config", "opencode")}},
+	{harnessAntigravity, []string{filepath.Join(geminiDir, "antigravity-cli")}},
+	{harnessDevin, []string{filepath.Join(".codeium", "windsurf"), filepath.Join(".config", "devin")}},
 }
 
-// detectHarnesses returns the subset of knownHarnesses whose config directory
-// is present under home. Order is stable (matches knownHarnesses). No writes.
+// detectHarnesses returns the subset of knownHarnesses with at least one config
+// directory present under home. Order is stable (matches knownHarnesses). No writes.
 func detectHarnesses(home string) []harness {
 	var found []harness
 	for _, fp := range footprints {
-		if _, err := os.Stat(filepath.Join(home, fp.dir)); err == nil {
+		present := slices.ContainsFunc(fp.dirs, func(dir string) bool {
+			_, err := os.Stat(filepath.Join(home, dir))
+			return err == nil
+		})
+		if present {
 			found = append(found, fp.h)
 		}
 	}

@@ -82,8 +82,8 @@ func NewCreateCmd(f *factory.Factory) *cobra.Command {
 }
 
 // createFailure reports an unconfirmed create as recoverable: a request the server
-// never answered may still have been accepted, and the idempotency key is the
-// caller's only handle on a retry that deduplicates. A coded error is an answer
+// never answered may still have been accepted, so the idempotency key and a
+// cluster_may_exist marker ride in error.details. A coded error is an answer
 // from the server, so it passes through untouched.
 func createFailure(idempotencyKey string, cause error) error {
 	if _, coded := errcode.CodeFor(cause); coded {
@@ -91,8 +91,7 @@ func createFailure(idempotencyKey string, cause error) error {
 	}
 	return detailedFailure(
 		map[string]any{"idempotency_key": idempotencyKey, "cluster_may_exist": true},
-		"could not confirm whether the cluster was created; run 'wcloud cluster list' before retrying, "+
-			"and resend the idempotency_key from error.details so a retry is likely to be deduplicated",
+		"could not confirm whether the cluster was created; run 'wcloud cluster list' before retrying",
 		fmt.Errorf("create cluster: %w", cause),
 	)
 }
