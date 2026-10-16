@@ -80,7 +80,7 @@ If the user says yes, install the Weaviate skill for the user, not into the proj
 
 Keep every flag: without `--yes` the command asks for confirmation and, off a terminal, can exit 0 having installed nothing. It needs Node 22.20 or later and git. Tell the user what you installed.
 
-Do not wait for your harness to load the skill. The installer's output names the folder it wrote. If you cannot read it, that folder is `~/.claude/skills/weaviate` for `claude-code`, `~/.codeium/windsurf/skills/weaviate` for `windsurf`, `~/.config/devin/skills/weaviate` for `devin` and `~/.agents/skills/weaviate` for the others. Run its scripts now, from that folder's `scripts/` by absolute path (replace `~` with the user's home directory); the skill's own `SKILL.md` writes them relative to its folder, which fails from the user's project. They need `uv`. Pass the real endpoint and key on each command, never in a file:
+Do not wait for your harness to load the skill. The skill's folder depends on the agent: `~/.claude/skills/weaviate` for `claude-code`, `~/.codeium/windsurf/skills/weaviate` for `windsurf`, `~/.config/devin/skills/weaviate` for `devin`, and `~/.agents/skills/weaviate` for every other agent. Run its scripts now, from that folder's `scripts/` by absolute path (replace `~` with the user's home directory); the skill's own `SKILL.md` writes them relative to its folder, which fails from the user's project. They need `uv`. Pass the real endpoint and key on each command, never in a file:
 
 `WEAVIATE_URL=<endpoint> WEAVIATE_API_KEY=<your-api-key> uv run <folder>/scripts/list_collections.py`
 

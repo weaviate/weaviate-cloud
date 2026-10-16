@@ -93,7 +93,7 @@ func TestGuideRequiredPhrases(t *testing.T) {
 		{"ask before spending the collection", "without asking the user"},
 		{"cap example rows", "always cap the row count"},
 
-		{"skills folder is reported by the installer", "The installer's output names the folder it wrote"},
+		{"other agents share one skills folder", "`~/.agents/skills/weaviate` for every other agent"},
 		{"claude code skills folder", "`~/.claude/skills/weaviate`"},
 		{"windsurf skills folder", "`~/.codeium/windsurf/skills/weaviate`"},
 		{"devin skills folder", "`~/.config/devin/skills/weaviate`"},
@@ -168,6 +168,7 @@ func TestGuideRejectedPhrases(t *testing.T) {
 		"per organisation",
 		"per-organisation",
 		"sign-in url",
+		"installer's output names",
 		"per account",
 		"inactiv",
 		"text2vec",
