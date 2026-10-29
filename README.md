@@ -16,11 +16,15 @@ Source: <https://github.com/weaviate/weaviate-cloud>
 stable part and are meant to be depended on. Commands, flags and text output may still change
 between v0.1 releases.
 
+`metadata` carries `api_version` and `request_id`. The shape of `data` depends on the command.
+It is an object for `cluster create` and `cluster get`, an array for `cluster list` and
+`region list`, and a bare string for `cluster status`.
+
 ## Install
 
 ### Build from source
 
-Requires **Go 1.26.9 or newer** (the floor is set in `go.mod`).
+Requires **Go 1.26.10 or newer** (the floor is set in `go.mod`).
 
 ```
 git clone https://github.com/weaviate/weaviate-cloud
@@ -115,7 +119,13 @@ wcloud auth logout    # revoke and forget the local credentials
 opening it. The redirect has to land on `127.0.0.1` on the same machine, so sign-in cannot be
 completed from a headless or remote host.
 
-Credentials are cached on disk with `0600` permissions.
+The listener for that redirect runs on `127.0.0.1`, on the first free port from 53682 to 53685,
+tried in order. If all four ports are busy, sign-in fails.
+
+Credentials are cached on disk with `0600` permissions, in `credentials.json` inside a `wcloud`
+folder under your user configuration directory, and the folder is kept at `0700`. That directory
+is `~/Library/Application Support` on macOS, `$XDG_CONFIG_HOME` or `~/.config` on Linux, and
+`%AppData%` on Windows.
 
 ## Commands
 
